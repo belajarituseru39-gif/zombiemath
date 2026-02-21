@@ -1,0 +1,632 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <!-- Meta viewport: user-scalable=no penting untuk mencegah zoom saat tapping cepat -->
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Zombie Math Survival - IFP Game</title>
+    
+    <!-- React & ReactDOM -->
+    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
+    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
+    
+    <!-- Babel for JSX -->
+    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+    
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Creepster&family=Roboto:wght@400;700;900&display=swap" rel="stylesheet">
+
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            overflow: hidden;
+            touch-action: none; /* Mencegah scroll/zoom default browser */
+            user-select: none; /* Mencegah blok teks terpilih */
+            background-color: #0f172a;
+            color: #fff;
+            margin: 0;
+            padding: 0;
+            -webkit-tap-highlight-color: transparent; /* Menghilangkan highlight biru di Android */
+        }
+
+        .font-zombie {
+            font-family: 'Creepster', cursive;
+        }
+
+        /* Animations */
+        @keyframes float-spooky {
+            0% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-15px) rotate(5deg); }
+            100% { transform: translateY(0px) rotate(0deg); }
+        }
+
+        @keyframes blood-splat {
+            0% { transform: scale(0); opacity: 1; }
+            50% { transform: scale(1.5); opacity: 0.8; }
+            100% { transform: scale(2); opacity: 0; }
+        }
+
+        @keyframes shake-hard {
+            0% { transform: translate(1px, 1px) rotate(0deg); }
+            10% { transform: translate(-1px, -2px) rotate(-1deg); }
+            20% { transform: translate(-3px, 0px) rotate(1deg); }
+            30% { transform: translate(3px, 2px) rotate(0deg); }
+            40% { transform: translate(1px, -1px) rotate(1deg); }
+            50% { transform: translate(-1px, 2px) rotate(-1deg); }
+            60% { transform: translate(-3px, 1px) rotate(0deg); }
+            70% { transform: translate(3px, 1px) rotate(-1deg); }
+            80% { transform: translate(-1px, -1px) rotate(1deg); }
+            90% { transform: translate(1px, 2px) rotate(0deg); }
+            100% { transform: translate(1px, -2px) rotate(-1deg); }
+        }
+
+        .animate-spooky { animation: float-spooky 4s ease-in-out infinite; }
+        .animate-splat { animation: blood-splat 0.4s ease-out forwards; }
+        .animate-shake { animation: shake-hard 0.5s; }
+
+        /* Custom Backgrounds */
+        .bg-graveyard {
+            background-color: #0f172a;
+            background-image: 
+                linear-gradient(to bottom, rgba(15, 23, 42, 0.8), rgba(15, 23, 42, 0.6)),
+                url('https://i.imgur.com/WZDItop.png');
+            background-size: cover;
+            background-position: center;
+            background-repeat: no-repeat;
+        }
+        
+        .fog-overlay {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            width: 100%;
+            height: 40%;
+            background: linear-gradient(to top, rgba(20, 83, 45, 0.4), transparent);
+            pointer-events: none;
+            z-index: 5;
+        }
+
+        /* Scrollbar hide */
+        ::-webkit-scrollbar { display: none; }
+        
+        /* Tombol Game Responsif */
+        .game-btn:active {
+            transform: scale(0.95);
+        }
+    </style>
+</head>
+<body class="h-screen w-screen bg-graveyard">
+    <div id="root"></div>
+
+    <script type="text/babel">
+        const { useState, useEffect, useRef } = React;
+
+        // --- GAME CONSTANTS & LOGIC ---
+        const BGM_URL = "https://github.com/belajarituseru39-gif/marsedalas/raw/refs/heads/main/MARS%20SD%20011%20Bppn.mp3";
+
+        const LEVELS = {
+            1: { name: 'Mudah (Satuan)', min: 1, max: 9 },
+            2: { name: 'Sedang (Puluhan)', min: 10, max: 99 },
+            3: { name: 'Sulit (Ratusan)', min: 100, max: 999 },
+            4: { name: 'Mimpi Buruk (Ribuan)', min: 1000, max: 9999 },
+        };
+
+        const generateQuestion = (level) => {
+            const { min, max } = LEVELS[level];
+            let num1 = Math.floor(Math.random() * (max - min + 1)) + min;
+            let num2 = Math.floor(Math.random() * (max - min + 1)) + min;
+            const isAddition = Math.random() > 0.5;
+
+            if (!isAddition && num1 < num2) {
+                [num1, num2] = [num2, num1];
+            }
+
+            const answer = isAddition ? num1 + num2 : num1 - num2;
+            const operator = isAddition ? '+' : '-';
+
+            let distractors = new Set();
+            while (distractors.size < 3) {
+                let offset = Math.floor(Math.random() * 10) + 1;
+                if (Math.random() > 0.5) offset *= -1;
+                let d = answer + offset;
+                if (d >= 0 && d !== answer) distractors.add(d);
+            }
+
+            return {
+                num1,
+                num2,
+                operator,
+                answer,
+                options: [answer, ...Array.from(distractors)].sort(() => Math.random() - 0.5)
+            };
+        };
+
+        // --- INLINE SVGs ---
+        const Icons = {
+            Skull: ({ className = "w-6 h-6" }) => (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                    <path d="M12 11c-2.3 0-5.5 1.6-4.5 5.5.8 3.3 2.5 5.5 4.5 5.5s3.7-2.2 4.5-5.5c1-3.9-2.2-5.5-4.5-5.5z"/>
+                    <path d="M8 11V7a4 4 0 0 1 8 0v4"/>
+                    <line x1="9" y1="14" x2="10" y2="14"/>
+                    <line x1="14" y1="14" x2="15" y2="14"/>
+                </svg>
+            ),
+            Ghost: ({ className = "w-6 h-6" }) => (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                    <path d="M9 22v-3h6v3" />
+                    <path d="M12 2a9 9 0 0 0-9 9v11l4-4 4 4 5-4 5 4V11a9 9 0 0 0-9-9z" />
+                    <path d="M10 10h.01" />
+                    <path d="M14 10h.01" />
+                </svg>
+            ),
+            Clock: ({ className = "w-6 h-6" }) => (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                    <circle cx="12" cy="12" r="10"/>
+                    <polyline points="12 6 12 12 16 14"/>
+                </svg>
+            ),
+            Users: ({ className = "w-6 h-6" }) => (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
+                    <circle cx="9" cy="7" r="4"/>
+                    <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
+                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
+                </svg>
+            ),
+            Volume2: ({ className = "w-6 h-6" }) => (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>
+                </svg>
+            ),
+            VolumeX: ({ className = "w-6 h-6" }) => (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
+                    <line x1="23" y1="9" x2="17" y2="15"/>
+                    <line x1="17" y1="9" x2="23" y2="15"/>
+                </svg>
+            ),
+            Crosshair: ({ className = "w-6 h-6" }) => (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                    <circle cx="12" cy="12" r="10"/>
+                    <line x1="22" y1="12" x2="18" y2="12"/>
+                    <line x1="6" y1="12" x2="2" y2="12"/>
+                    <line x1="12" y1="6" x2="12" y2="2"/>
+                    <line x1="12" y1="22" x2="12" y2="18"/>
+                </svg>
+            ),
+            Biohazard: ({ className = "w-6 h-6" }) => (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                    <circle cx="12" cy="12" r="2"/>
+                    <path d="M4.93 19.07a10 10 0 0 1 1.95-7.03 10 10 0 0 1 7.03-1.94 10 10 0 0 1 7.03 1.94 10 10 0 0 1 1.95 7.03"/>
+                    <path d="M12 14v8"/>
+                    <path d="M9.68 12.32a10 10 0 0 1-7.03-1.95 10 10 0 0 1-1.94-7.03 10 10 0 0 1 1.94-7.03 10 10 0 0 1 7.03-1.95"/>
+                    <path d="M14.32 12.32a10 10 0 0 0 7.03-1.95 10 10 0 0 0 1.94-7.03 10 10 0 0 0-1.94-7.03 10 10 0 0 0-7.03-1.95"/>
+                </svg>
+            ),
+            RefreshCw: ({ className = "w-6 h-6" }) => (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                    <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
+                    <path d="M21 3v5h-5"/>
+                    <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
+                    <path d="M8 16H3v5"/>
+                </svg>
+            ),
+            Maximize: ({ className = "w-6 h-6" }) => (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                    <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
+                </svg>
+            ),
+            Minimize: ({ className = "w-6 h-6" }) => (
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
+                    <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/>
+                </svg>
+            )
+        };
+
+        // --- COMPONENTS ---
+
+        const MainMenu = ({ onStart }) => (
+            <div className="flex flex-col items-center justify-center h-full relative overflow-hidden text-white p-4">
+                <div className="fog-overlay"></div>
+                <div className="absolute top-10 left-10 text-green-500 animate-spooky opacity-50 hidden md:block" style={{animationDelay: '0s'}}>
+                    <Icons.Skull className="w-16 h-16 md:w-24 md:h-24" />
+                </div>
+                <div className="absolute bottom-20 right-10 text-purple-500 animate-spooky opacity-50 hidden md:block" style={{animationDelay: '1.5s'}}>
+                    <Icons.Ghost className="w-16 h-16 md:w-24 md:h-24" />
+                </div>
+                
+                <div className="z-10 flex flex-col items-center w-full max-w-4xl">
+                    <h1 className="font-zombie text-5xl md:text-7xl lg:text-9xl text-green-500 mb-2 text-center tracking-wider drop-shadow-[0_5px_5px_rgba(0,0,0,0.8)] leading-tight">
+                        ZOMBIE MATH
+                    </h1>
+                    <h2 className="text-xl md:text-3xl font-bold text-red-500 mb-8 md:mb-12 uppercase tracking-[0.3em] md:tracking-[0.5em] drop-shadow-lg text-center">
+                        Survival Mode
+                    </h2>
+
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8 w-full max-w-sm md:max-w-4xl mb-12">
+                        <button 
+                            onPointerDown={() => onStart(1)}
+                            className="game-btn group bg-gray-800/80 hover:bg-green-900/90 border-4 border-gray-600 hover:border-green-500 text-white p-4 md:p-8 rounded-xl shadow-2xl transform transition hover:scale-105 flex flex-col items-center backdrop-blur-sm"
+                        >
+                            <span className="text-4xl md:text-5xl mb-2 md:mb-4 group-hover:animate-bounce">🧟</span>
+                            <span className="text-2xl md:text-3xl font-zombie text-green-400">Solo Survival</span>
+                            <span className="text-xs md:text-sm mt-1 md:mt-2 text-gray-400 text-center">Pertahankan Benteng Sendirian</span>
+                        </button>
+                        <button 
+                            onPointerDown={() => onStart(2)}
+                            className="game-btn group bg-gray-800/80 hover:bg-purple-900/90 border-4 border-gray-600 hover:border-purple-500 text-white p-4 md:p-8 rounded-xl shadow-2xl transform transition hover:scale-105 flex flex-col items-center backdrop-blur-sm"
+                        >
+                            <span className="text-4xl md:text-5xl mb-2 md:mb-4 group-hover:animate-bounce">⚔️</span>
+                            <span className="text-2xl md:text-3xl font-zombie text-purple-400">Versus Battle</span>
+                            <span className="text-xs md:text-sm mt-1 md:mt-2 text-gray-400 text-center">Duel Pemburu Zombie</span>
+                        </button>
+                    </div>
+
+                    <div className="text-center text-gray-400 text-xs md:text-sm bg-black/40 p-4 rounded-xl border border-gray-700 backdrop-blur-sm">
+                        <p className="mb-1">Ide Permainan oleh <span className="text-white font-bold">Abdul Rahmat, S.Pd</span></p>
+                        <p className="text-gray-500">SDN 011 Balikpapan Tengah | Kontak: 081351767574</p>
+                    </div>
+                </div>
+            </div>
+        );
+
+        const LevelSelect = ({ onSelectLevel, onBack }) => (
+            <div className="flex flex-col items-center justify-center h-full relative z-20 p-4">
+                 <div className="fog-overlay"></div>
+                
+                <h2 className="font-zombie text-4xl md:text-6xl text-red-500 mb-6 md:mb-10 z-10 drop-shadow-md text-center">Pilih Ancaman</h2>
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 w-full max-w-6xl z-10 overflow-y-auto max-h-[70vh] p-2">
+                    {Object.entries(LEVELS).map(([lvl, data]) => (
+                        <button
+                            key={lvl}
+                            onPointerDown={() => onSelectLevel(parseInt(lvl))}
+                            className={`game-btn p-4 md:p-6 rounded-lg border-2 text-left transition hover:-translate-y-2 relative overflow-hidden group backdrop-blur-md
+                                ${lvl == 1 ? 'bg-green-900/60 border-green-600 hover:bg-green-900/80' : 
+                                  lvl == 2 ? 'bg-yellow-900/60 border-yellow-600 hover:bg-yellow-900/80' :
+                                  lvl == 3 ? 'bg-orange-900/60 border-orange-600 hover:bg-orange-900/80' :
+                                  'bg-red-900/60 border-red-600 hover:bg-red-900/80'}`}
+                        >
+                            <div className="absolute -right-4 -bottom-4 opacity-20 group-hover:opacity-40 transition-opacity">
+                                {lvl == 4 ? <Icons.Skull className="w-20 h-20 md:w-24 md:h-24" /> : <Icons.Users className="w-20 h-20 md:w-24 md:h-24" />}
+                            </div>
+                            <div className="text-3xl md:text-4xl font-zombie mb-1 md:mb-2">{lvl}</div>
+                            <div className="text-lg md:text-xl font-bold uppercase tracking-wide">{data.name}</div>
+                            <div className="text-xs md:text-sm mt-1 md:mt-2 text-gray-300">Zona: {data.min} - {data.max}</div>
+                        </button>
+                    ))}
+                </div>
+                <button onPointerDown={onBack} className="game-btn mt-6 md:mt-12 px-6 md:px-8 py-2 md:py-3 bg-gray-700/80 rounded-full text-white font-bold hover:bg-gray-600 border border-gray-500 z-10 backdrop-blur-sm text-sm md:text-base">
+                    KEMBALI KE MARKAS
+                </button>
+            </div>
+        );
+
+        // --- SOLO MODE (RESPONSIF) ---
+        const SoloGame = ({ level, onEndGame }) => {
+            const [score, setScore] = useState(0);
+            const [question, setQuestion] = useState(null);
+            const [timer, setTimer] = useState(60);
+            const [feedback, setFeedback] = useState(null);
+
+            useEffect(() => {
+                setQuestion(generateQuestion(level));
+            }, []);
+
+            useEffect(() => {
+                const interval = setInterval(() => {
+                    setTimer(t => {
+                        if (t <= 1) {
+                            clearInterval(interval);
+                            onEndGame(score);
+                            return 0;
+                        }
+                        return t - 1;
+                    });
+                }, 1000);
+                return () => clearInterval(interval);
+            }, [score]);
+
+            const handleAnswer = (val) => {
+                if (val === question.answer) {
+                    setScore(s => s + 10);
+                    setFeedback('correct');
+                    setTimeout(() => {
+                        setFeedback(null);
+                        setQuestion(generateQuestion(level));
+                    }, 300);
+                } else {
+                    setScore(s => Math.max(0, s - 5));
+                    setFeedback('wrong');
+                    setTimeout(() => setFeedback(null), 300);
+                }
+            };
+
+            return (
+                <div className={`h-full w-full flex flex-col relative z-10 transition-colors duration-200 ${feedback === 'wrong' ? 'border-4 md:border-8 border-red-600 animate-shake' : ''}`}>
+                    
+                    <div className="flex justify-between items-center p-3 md:p-6 bg-black/50 backdrop-blur-md border-b-2 md:border-b-4 border-gray-700">
+                        <div className="text-green-400 font-zombie text-2xl md:text-4xl">SKOR: {score}</div>
+                        <div className={`flex items-center gap-2 px-3 py-1 md:px-6 md:py-2 rounded-xl border-2 ${timer < 10 ? 'bg-red-900/80 border-red-500 animate-pulse' : 'bg-gray-800/80 border-gray-500'}`}>
+                            <Icons.Clock className="w-5 h-5 md:w-8 md:h-8" />
+                            <span className="text-2xl md:text-4xl font-mono">{timer}s</span>
+                        </div>
+                    </div>
+
+                    <div className="flex-1 flex flex-col items-center justify-center p-4 md:p-8 gap-4 md:gap-8 overflow-y-auto">
+                        <div className="relative group w-full max-w-xs md:max-w-2xl">
+                            <div className="absolute inset-0 bg-green-500 blur-xl opacity-20 group-hover:opacity-40 transition-opacity"></div>
+                            <div className="relative bg-black/90 border-4 border-green-600 p-6 md:p-12 rounded-2xl md:rounded-3xl shadow-2xl text-center">
+                                <div className="text-gray-400 text-sm md:text-xl font-bold tracking-[0.2em] md:tracking-[0.3em] mb-2 md:mb-4">TARGET TERKUNCI</div>
+                                <div className="text-5xl md:text-9xl font-mono text-white font-bold drop-shadow-[0_0_10px_rgba(34,197,94,0.5)]">
+                                    {question ? `${question.num1} ${question.operator} ${question.num2}` : '...'}
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-6 w-full max-w-xs md:max-w-4xl mt-4 md:mt-8">
+                            {question && question.options.map((opt, i) => (
+                                <button
+                                    key={i}
+                                    onPointerDown={(e) => {
+                                        e.preventDefault(); // Mencegah event ganda
+                                        handleAnswer(opt);
+                                    }}
+                                    className="game-btn bg-gray-800 hover:bg-gray-700 border-b-4 md:border-b-8 border-gray-900 hover:border-gray-800 text-white text-3xl md:text-5xl font-bold py-4 md:py-8 rounded-xl md:rounded-2xl shadow-xl transition-all flex items-center justify-center gap-2 md:gap-4 group"
+                                >
+                                    <Icons.Crosshair className="text-gray-500 group-hover:text-red-500 transition-colors w-6 h-6 md:w-10 md:h-10" />
+                                    {opt}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+
+                    {feedback === 'correct' && (
+                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-50 bg-green-500/20 backdrop-blur-sm">
+                            <div className="font-zombie text-6xl md:text-9xl text-green-400 animate-splat drop-shadow-[0_0_20px_black]">
+                                HEADSHOT!
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        // --- VERSUS MODE (RESPONSIF & INSTANT TOUCH) ---
+        const PlayerPanel = ({ player, score, question, borderColor, btnClass, onAnswer }) => (
+            <div className={`flex-1 flex flex-col relative border-r-2 border-gray-700 bg-gray-900/90 min-w-0`}> 
+                <div className={`p-2 md:p-4 text-center border-b-4 ${borderColor} bg-black/40`}>
+                    <div className="text-sm md:text-xl font-bold text-gray-400 uppercase tracking-widest truncate">P{player}</div>
+                    <div className="text-4xl md:text-6xl font-zombie mt-1 md:mt-2 text-white">{score} <span className="text-xs md:text-sm font-sans text-gray-500">/ 100</span></div>
+                    <div className="w-full h-2 md:h-3 bg-gray-800 rounded-full mt-2 overflow-hidden">
+                        <div 
+                            className="h-full bg-gradient-to-r from-green-600 to-green-400 transition-all duration-300" 
+                            style={{width: `${Math.min(100, score)}%`}}
+                        ></div>
+                    </div>
+                </div>
+
+                <div className="flex-1 flex flex-col items-center justify-center relative overflow-hidden p-2">
+                    <div className="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">
+                        <div className={player === 1 ? "text-cyan-500" : "text-purple-500"}>
+                            <Icons.Biohazard className="w-32 h-32 md:w-56 md:h-56" />
+                        </div>
+                    </div>
+                    <div className="bg-black text-white px-4 py-2 md:px-8 md:py-6 rounded border-2 border-gray-600 text-3xl md:text-6xl font-mono shadow-[0_0_15px_rgba(255,255,255,0.1)] z-10 whitespace-nowrap">
+                        {question ? `${question.num1} ${question.operator} ${question.num2}` : '...'}
+                    </div>
+                </div>
+
+                <div className="p-2 md:p-6 grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-4 pb-4 md:pb-12 bg-black/20">
+                     {question && question.options.map((opt, i) => (
+                         <button
+                            key={i}
+                            onPointerDown={(e) => {
+                                e.preventDefault(); // INSTANT RESPONSE
+                                onAnswer(player, opt, question);
+                            }}
+                            className={`game-btn ${btnClass} text-white text-xl md:text-4xl font-bold py-3 md:py-6 rounded border-b-2 md:border-b-4 transition-all shadow-lg flex items-center justify-center gap-1 md:gap-2 select-none`}
+                         >
+                             <Icons.Crosshair className="w-4 h-4 md:w-6 md:h-6" />
+                             {opt}
+                         </button>
+                     ))}
+                </div>
+            </div>
+        );
+
+        const VersusGame = ({ level, onEndGame }) => {
+            const [q1, setQ1] = useState(null);
+            const [q2, setQ2] = useState(null);
+            const [score1, setScore1] = useState(0);
+            const [score2, setScore2] = useState(0);
+            const [winner, setWinner] = useState(null);
+
+            useEffect(() => {
+                setQ1(generateQuestion(level));
+                setQ2(generateQuestion(level));
+            }, []);
+
+            useEffect(() => {
+                if (score1 >= 100) setWinner(1);
+                if (score2 >= 100) setWinner(2);
+            }, [score1, score2]);
+
+            const handleAnswer = (player, val, currentQ) => {
+                if (winner) return;
+
+                if (val === currentQ.answer) {
+                    if (player === 1) {
+                        setScore1(s => s + 10);
+                        setQ1(generateQuestion(level));
+                    } else {
+                        setScore2(s => s + 10);
+                        setQ2(generateQuestion(level));
+                    }
+                } else {
+                    if (player === 1) setScore1(s => Math.max(0, s - 5));
+                    else setScore2(s => Math.max(0, s - 5));
+                }
+            };
+
+            if (winner) {
+                return (
+                    <div className="h-full flex flex-col items-center justify-center bg-gray-900 text-white relative z-20 p-4 text-center">
+                        <div className="bg-black/80 p-6 md:p-12 rounded-2xl backdrop-blur-md border-4 border-green-600 w-full max-w-2xl">
+                            <h1 className="font-zombie text-5xl md:text-8xl text-green-500 mb-4 animate-bounce">SURVIVOR {winner} WINS!</h1>
+                            <p className="text-lg md:text-2xl text-gray-400 mb-8">Semua zombie berhasil dimusnahkan.</p>
+                            <button onPointerDown={() => onEndGame(0)} className="game-btn bg-red-600 hover:bg-red-700 text-white px-6 md:px-10 py-3 md:py-4 rounded-lg text-xl md:text-3xl font-bold shadow-lg uppercase tracking-widest w-full md:w-auto">
+                                Kembali ke Menu
+                            </button>
+                        </div>
+                    </div>
+                )
+            }
+
+            // Flex-col on mobile (Top/Bottom), Flex-row on desktop (Left/Right)
+            return (
+                <div className="h-full w-full flex flex-col md:flex-row relative z-10">
+                    <PlayerPanel 
+                        player={1} 
+                        score={score1} 
+                        question={q1} 
+                        borderColor="border-cyan-600"
+                        btnClass="bg-cyan-800 border-cyan-900 hover:bg-cyan-700"
+                        onAnswer={handleAnswer}
+                    />
+                    <PlayerPanel 
+                        player={2} 
+                        score={score2} 
+                        question={q2} 
+                        borderColor="border-purple-600"
+                        btnClass="bg-purple-800 border-purple-900 hover:bg-purple-700"
+                        onAnswer={handleAnswer}
+                    />
+                </div>
+            );
+        };
+
+        const App = () => {
+            const [gameState, setGameState] = useState('menu');
+            const [mode, setMode] = useState(1);
+            const [level, setLevel] = useState(1);
+            const [lastScore, setLastScore] = useState(0);
+            
+            const [isMusicPlaying, setIsMusicPlaying] = useState(false);
+            const [isFullscreen, setIsFullscreen] = useState(false);
+            const audioRef = useRef(null);
+
+            useEffect(() => {
+                if(audioRef.current) {
+                    audioRef.current.volume = 0.5;
+                }
+            }, []);
+
+            const toggleMusic = () => {
+                if (audioRef.current) {
+                    if (isMusicPlaying) {
+                        audioRef.current.pause();
+                        setIsMusicPlaying(false);
+                    } else {
+                        audioRef.current.play()
+                            .then(() => setIsMusicPlaying(true))
+                            .catch(e => console.log("Playback failed:", e));
+                    }
+                }
+            };
+
+            const toggleFullscreen = () => {
+                if (!document.fullscreenElement) {
+                    document.documentElement.requestFullscreen().then(() => setIsFullscreen(true)).catch(err => console.log(err));
+                } else {
+                    document.exitFullscreen().then(() => setIsFullscreen(false));
+                }
+            };
+
+            const handleStart = (selectedMode) => {
+                setMode(selectedMode);
+                setGameState('level_select');
+            };
+
+            const handleLevelSelect = (selectedLevel) => {
+                setLevel(selectedLevel);
+                setGameState('playing');
+            };
+
+            const handleEndGame = (score) => {
+                setLastScore(score);
+                setGameState('gameover');
+            };
+
+            const handleHome = () => setGameState('menu');
+
+            return (
+                <div className="h-full w-full relative">
+                    <audio ref={audioRef} src={BGM_URL} loop />
+
+                    <div className="absolute top-2 right-2 md:top-4 md:right-4 z-[60] flex gap-2">
+                        <button 
+                            onPointerDown={toggleFullscreen} 
+                            className="bg-black/50 hover:bg-blue-600/80 text-white p-2 md:p-3 rounded-full transition-colors border-2 border-white/20 backdrop-blur-sm"
+                        >
+                            {isFullscreen ? <Icons.Minimize className="w-5 h-5 md:w-6 md:h-6" /> : <Icons.Maximize className="w-5 h-5 md:w-6 md:h-6" />}
+                        </button>
+
+                        <button 
+                            onPointerDown={toggleMusic} 
+                            className="bg-black/50 hover:bg-green-600/80 text-white p-2 md:p-3 rounded-full transition-colors border-2 border-white/20 backdrop-blur-sm"
+                        >
+                            {isMusicPlaying ? <Icons.Volume2 className="w-5 h-5 md:w-6 md:h-6" /> : <Icons.VolumeX className="w-5 h-5 md:w-6 md:h-6" />}
+                        </button>
+                    </div>
+
+                    {gameState === 'menu' && <MainMenu onStart={handleStart} />}
+                    
+                    {gameState === 'level_select' && (
+                        <LevelSelect 
+                            onSelectLevel={handleLevelSelect} 
+                            onBack={() => setGameState('menu')} 
+                        />
+                    )}
+
+                    {gameState === 'playing' && mode === 1 && (
+                        <SoloGame level={level} onEndGame={handleEndGame} />
+                    )}
+
+                    {gameState === 'playing' && mode === 2 && (
+                        <VersusGame level={level} onEndGame={handleHome} />
+                    )}
+
+                    {gameState === 'gameover' && (
+                        <div className="h-full flex flex-col items-center justify-center bg-black text-white relative overflow-hidden z-20 p-4">
+                            <div className="absolute inset-0 bg-red-900/40 animate-pulse pointer-events-none"></div>
+                            
+                            <h2 className="font-zombie text-5xl md:text-7xl text-red-600 mb-2 md:mb-4 drop-shadow-[0_2px_10px_rgba(220,38,38,0.8)] z-10">GAME OVER</h2>
+                            
+                            <div className="bg-gray-800/90 backdrop-blur-md p-6 md:p-8 rounded-lg border-2 border-gray-600 text-center shadow-2xl z-10 w-full max-w-lg">
+                                <p className="text-lg md:text-xl text-gray-400 mb-2">Total Kill Score</p>
+                                <p className="text-6xl md:text-8xl font-bold text-green-500 mb-6 md:mb-8 font-mono">{lastScore}</p>
+                                
+                                <div className="flex flex-col md:flex-row gap-4 md:gap-6 justify-center">
+                                    <button onPointerDown={() => setGameState('playing')} className="game-btn bg-green-700 hover:bg-green-600 text-white px-6 md:px-8 py-3 md:py-4 rounded font-bold shadow-lg flex items-center justify-center gap-2 text-lg">
+                                        <Icons.RefreshCw className="w-5 h-5 md:w-6 md:h-6" /> MAIN LAGI
+                                    </button>
+                                    <button onPointerDown={handleHome} className="game-btn bg-gray-600 hover:bg-gray-500 text-white px-6 md:px-8 py-3 md:py-4 rounded font-bold shadow-lg text-lg">
+                                        MENU
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            );
+        };
+
+        const root = ReactDOM.createRoot(document.getElementById('root'));
+        root.render(<App />);
+    </script>
+</body>
+</html>
