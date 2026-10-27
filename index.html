@@ -1,632 +1,523 @@
 <!DOCTYPE html>
 <html lang="id">
 <head>
-    <meta charset="UTF-8">
-    <!-- Meta viewport: user-scalable=no penting untuk mencegah zoom saat tapping cepat -->
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Zombie Math Survival - IFP Game</title>
-    
-    <!-- React & ReactDOM -->
-    <script src="https://unpkg.com/react@18/umd/react.development.js" crossorigin></script>
-    <script src="https://unpkg.com/react-dom@18/umd/react-dom.development.js" crossorigin></script>
-    
-    <!-- Babel for JSX -->
-    <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
-    
-    <!-- Tailwind CSS -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    
-    <!-- Google Fonts -->
-    <link href="https://fonts.googleapis.com/css2?family=Creepster&family=Roboto:wght@400;700;900&display=swap" rel="stylesheet">
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<title>Zombie Math Survival - IFP Game</title>
+<link href="https://fonts.googleapis.com/css2?family=Creepster&family=Roboto:wght@400;700;900&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box}
+html,body{height:100%;margin:0}
+body{font-family:'Roboto',sans-serif;overflow:hidden;touch-action:none;user-select:none;-webkit-user-select:none;-webkit-tap-highlight-color:transparent;color:#fff;
+background-color:#0f172a;
+background-image:linear-gradient(to bottom,rgba(15,23,42,.8),rgba(15,23,42,.6)),url('https://i.imgur.com/WZDItop.png');
+background-size:cover;background-position:center;background-repeat:no-repeat}
+.zf{font-family:'Creepster',cursive;letter-spacing:.05em}
+.screen{position:absolute;inset:0;display:none;flex-direction:column;align-items:center;justify-content:center;padding:16px;text-align:center}
+.screen.on{display:flex}
+button{font:inherit;color:#fff;cursor:pointer;border:0}
+.btn{padding:14px 26px;border-radius:14px;font-weight:900;font-size:20px;background:#374151;border-bottom:5px solid #111827;transition:transform .08s}
+.btn:active{transform:scale(.95)}
+.btn.g{background:#15803d;border-color:#14532d}.btn.r{background:#b91c1c;border-color:#7f1d1d}
+h1{font-size:clamp(48px,11vw,110px);color:#22c55e;margin:0;text-shadow:0 5px 5px #000;line-height:1}
+h2.sub{color:#ef4444;letter-spacing:.4em;text-transform:uppercase;margin:6px 0 24px;font-size:clamp(14px,3vw,28px)}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;width:100%;max-width:760px}
+.card{background:rgba(31,41,55,.85);border:4px solid #4b5563;border-radius:16px;padding:18px;transition:.15s}
+.card:hover{transform:translateY(-6px)}
+.card .e{font-size:44px}.card .t{font-size:30px;margin:4px 0}
+.card small{color:#9ca3af;display:block}
+.credit{margin-top:22px;font-size:12px;color:#9ca3af;background:rgba(0,0,0,.45);padding:10px 16px;border-radius:12px;border:1px solid #374151}
+.credit b{color:#fff}
+.lv{border-radius:12px;padding:14px;text-align:left;border:2px solid;backdrop-filter:blur(4px)}
+.lv .n{font-size:34px}.lv .nm{font-weight:900;text-transform:uppercase}.lv small{color:#d1d5db}
+.top{position:absolute;top:8px;right:8px;z-index:90;display:flex;gap:8px}
+.top button,.back{background:rgba(0,0,0,.55);border:2px solid rgba(255,255,255,.25);border-radius:50%;width:44px;height:44px;font-size:20px}
+.back{position:absolute;top:8px;left:8px;z-index:90}
 
-    <style>
-        body {
-            font-family: 'Roboto', sans-serif;
-            overflow: hidden;
-            touch-action: none; /* Mencegah scroll/zoom default browser */
-            user-select: none; /* Mencegah blok teks terpilih */
-            background-color: #0f172a;
-            color: #fff;
-            margin: 0;
-            padding: 0;
-            -webkit-tap-highlight-color: transparent; /* Menghilangkan highlight biru di Android */
-        }
+/* ===== ARENA ===== */
+#game{position:absolute;inset:0;display:none}
+#game.on{display:block}
+.arena{position:absolute;inset:0;display:flex}
+.arena.vs{flex-direction:column}
+@media (orientation:landscape) and (min-width:700px){.arena.vs{flex-direction:row}}
+.field{flex:1;min-height:0;min-width:0;display:flex;flex-direction:column;position:relative;overflow:hidden}
+.arena.vs .field+.field{border-top:4px solid #374151}
+@media (orientation:landscape) and (min-width:700px){.arena.vs .field+.field{border-top:0;border-left:4px solid #374151}}
+.hud{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 60px 6px 56px;background:rgba(0,0,0,.6);border-bottom:3px solid #374151;z-index:20;font-weight:900}
+.arena.vs .hud{padding:4px 10px;font-size:14px}
+.hud .sc{font-family:'Creepster';font-size:26px;color:#4ade80}
+.hud .cmb{color:#facc15;min-width:70px;text-align:right}
+.layer{flex:1;position:relative;overflow:hidden;min-height:0;
+background:linear-gradient(to bottom,transparent 0,transparent 17%,rgba(20,83,45,0) 17%,rgba(20,83,45,.35) 100%)}
+.layer::before{content:'';position:absolute;left:50%;top:17%;bottom:0;width:70%;transform:translateX(-50%);
+background:linear-gradient(to bottom,rgba(120,113,108,.0),rgba(120,113,108,.35));clip-path:polygon(40% 0,60% 0,100% 100%,0 100%)}
+.base{position:absolute;left:0;right:0;bottom:0;height:16px;background:repeating-linear-gradient(90deg,#78350f 0 24px,#92400e 24px 28px);border-top:4px solid #451a03;z-index:60}
+.base::after{content:'BENTENG';position:absolute;left:50%;top:-22px;transform:translateX(-50%);font-size:11px;font-weight:900;letter-spacing:.3em;color:#fbbf24;text-shadow:0 1px 2px #000}
+.z{position:absolute;transform-origin:50% 100%;text-align:center;pointer-events:none}
+.z .board{position:relative;display:inline-block;background:linear-gradient(#b45309,#92400e);border:4px solid #451a03;border-radius:8px;padding:4px 12px;font:900 24px/1.2 monospace;color:#fff;white-space:nowrap;box-shadow:0 4px 8px rgba(0,0,0,.6);text-shadow:0 2px 0 #451a03}
+.z .board::after{content:'';position:absolute;left:50%;bottom:-16px;width:7px;height:16px;background:#78350f;transform:translateX(-50%)}
+.z .zb{font-size:72px;line-height:1;margin-top:12px;animation:walk .55s ease-in-out infinite alternate;filter:drop-shadow(0 0 8px rgba(34,197,94,.5))}
+.z.t .board{border-color:#ef4444;box-shadow:0 0 18px #ef4444,0 4px 8px #000;animation:pulse .6s infinite alternate}
+.z.t .zb{filter:drop-shadow(0 0 12px #ef4444)}
+.z.hurt{animation:shake .3s}
+.z.dead .zb{animation:die .55s forwards}
+.z.dead .board{animation:fall .55s forwards}
+@keyframes walk{from{transform:rotate(-7deg) translateY(0)}to{transform:rotate(7deg) translateY(-8px)}}
+@keyframes pulse{to{transform:scale(1.08)}}
+@keyframes shake{25%{translate:-8px 0}75%{translate:8px 0}}
+@keyframes die{to{transform:rotate(90deg) translateY(40px);opacity:0}}
+@keyframes fall{to{transform:translateY(60px) rotate(-30deg);opacity:0}}
+.pop{position:absolute;font-family:'Creepster';font-size:34px;pointer-events:none;z-index:70;animation:pop .8s ease-out forwards;text-shadow:0 2px 6px #000;white-space:nowrap}
+@keyframes pop{from{transform:translate(-50%,0) scale(.6);opacity:1}to{transform:translate(-50%,-70px) scale(1.3);opacity:0}}
+.flash{position:absolute;inset:0;background:rgba(220,38,38,.45);pointer-events:none;z-index:80;animation:fl .4s forwards}
+@keyframes fl{to{opacity:0}}
+.ans{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:8px;background:rgba(0,0,0,.65);border-top:3px solid #374151;z-index:20}
+.ans button{background:#1f2937;border-bottom:5px solid #030712;border-radius:12px;font-size:clamp(22px,5vw,40px);font-weight:900;padding:12px 4px;transition:transform .06s}
+.ans button:active{transform:scale(.94)}
+.ans button.x{background:#7f1d1d;opacity:.5}
+.ans button:disabled{opacity:.35}
+.ans button small{display:block;font-size:11px;color:#9ca3af;font-weight:400}
+.field.p1 .ans button:not(.x){background:#155e75}.field.p2 .ans button:not(.x){background:#6b21a8}
+.arena.vs .ans button{font-size:clamp(18px,4vw,30px);padding:8px 2px}
+.bar{height:8px;background:#1f2937;flex:1;border-radius:6px;overflow:hidden;margin:0 8px}
+.bar i{display:block;height:100%;background:linear-gradient(90deg,#16a34a,#4ade80);width:0;transition:width .3s}
+.pn{color:#9ca3af}
+.msg{background:rgba(0,0,0,.85);border:4px solid #16a34a;border-radius:20px;padding:26px;max-width:520px;width:100%}
+.big{font-size:84px;font-weight:900;color:#22c55e;font-family:monospace}
+/* NIGHTFALL — embedded vector scenery and articulated characters */
+:root{--acid:#c9fb6c;--ink:#071513}
+body{background:#071513;background-image:none;font-family:Roboto,Arial,sans-serif}
+button:focus-visible{outline:3px solid var(--acid);outline-offset:4px}
+.world{position:absolute;inset:0;overflow:hidden;pointer-events:none;background:linear-gradient(#05121c,#183c3c 58%,#0b201c)}
+.world svg.landscape{width:100%;height:100%;position:absolute;inset:0}
+.world::after{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at 64% 38%,transparent 8%,#030e1355 65%,#020b11bb);box-shadow:inset 0 0 100px #020a14}
+.mist{position:absolute;left:-35%;width:170%;height:25%;bottom:14%;background:radial-gradient(ellipse at 25% 55%,#84dbb12b,transparent 48%),radial-gradient(ellipse at 70% 50%,#80cbb126,transparent 44%);filter:blur(15px);animation:mist 22s ease-in-out infinite alternate}.mist.two{bottom:0;opacity:.7;animation-duration:30s;animation-direction:alternate-reverse}
+.firefly{position:absolute;width:3px;height:3px;background:#caff9c;border-radius:50%;box-shadow:0 0 10px #a4ff67;animation:drift var(--duration) ease-in-out infinite;animation-delay:var(--delay);opacity:0}
+@keyframes mist{to{transform:translateX(12%)}}@keyframes drift{20%,70%{opacity:.7}to{transform:translate(45px,-120px);opacity:0}}
+.screen{z-index:2;padding:56px 6vw 30px}
+.top{top:20px;right:24px;gap:10px}.top button,.back{width:40px;height:40px;font-size:18px;background:#102522bb;border:1px solid #658b7455;border-radius:12px;backdrop-filter:blur(12px)}.back{top:12px;left:14px}.top button:hover,.back:hover{border-color:var(--acid);color:var(--acid)}
+.brandmark{position:absolute;top:28px;left:6vw;z-index:3;font:700 11px monospace;letter-spacing:3px;color:#d3e3d9}.brandmark b{color:var(--acid);margin-right:12px}
+#menu{align-items:flex-start;text-align:left;padding-left:8vw;background:linear-gradient(90deg,#03120ed9,transparent 90%)}
+.eyebrow{color:var(--acid);font:700 11px monospace;letter-spacing:3px;margin-bottom:20px;display:flex;align-items:center;gap:10px}.eyebrow::before{content:'';width:7px;height:7px;background:var(--acid);border-radius:50%;box-shadow:0 0 15px var(--acid)}
+#menu h1{font-size:clamp(64px,8.6vw,132px);max-width:660px;color:#d8f5c9;line-height:.88;text-shadow:0 5px 0 #183b2c,0 12px 40px #000;letter-spacing:0}#menu h1 span{display:block;color:var(--acid)}#menu h2.sub{color:#b7cbbd;font-size:12px;letter-spacing:.5em;margin:24px 0 16px}
+.intro{color:#a7beb6;font-size:14px;line-height:1.7;margin:0 0 28px;max-width:400px}#menu .cards{max-width:550px;grid-template-columns:1fr 1fr;gap:12px}
+.card{position:relative;text-align:left;padding:20px;border:1px solid #7aa18b45;border-radius:16px;background:linear-gradient(125deg,#20392be8,#0b1c1bee);box-shadow:0 12px 32px #0003;backdrop-filter:blur(12px)}.card:first-child{border-color:#bbf26788}.card:hover{transform:translateY(-5px);border-color:var(--acid);box-shadow:0 10px 40px #a9ff5615}.card .e{font-size:24px;margin-bottom:14px}.card .t{font-family:Roboto,Arial,sans-serif;font-size:19px;letter-spacing:0;color:#e5f6d6!important;font-weight:900}.card small{color:#a4b9ae;line-height:1.6;font-size:11px;max-width:190px}.card .arrow{position:absolute;right:18px;top:22px;color:var(--acid)}
+.credit{font-size:10px;color:#7f9c8c;margin-top:26px;padding:0;border:0;background:none;line-height:1.8}.credit b{color:#a8c2b1}
+.hero-zombie{position:absolute;right:9%;bottom:18%;width:min(29vw,390px);pointer-events:none;filter:drop-shadow(0 25px 35px #0008)}.hero-zombie::before{content:'';position:absolute;inset:10% -25%;border-radius:50%;background:radial-gradient(#b2ff5a22,transparent 70%)}.hero-zombie .zb{width:100%;animation:body-sway 2.5s ease-in-out infinite alternate}.hero-caption{position:absolute;bottom:-25px;left:0;right:0;text-align:center;font:10px monospace;letter-spacing:4px;color:#c3dfb499}.hero-tag{position:absolute;top:22%;right:-15%;font:10px monospace;letter-spacing:2px;border:1px solid #bde99144;background:#09231bbb;padding:9px 12px;border-radius:4px;color:#c2e79b;transform:rotate(6deg)}
+#levels{background:#03120d8c;backdrop-filter:blur(8px)}#levels h2{color:var(--acid)!important}.lv{background:linear-gradient(140deg,#19362eea,#091b18ee)!important;border-width:1px;padding:24px;border-radius:16px;transition:transform .2s}.lv:hover{transform:translateY(-5px);box-shadow:0 10px 30px #0005}.lv .n{color:var(--acid);font-size:50px;margin-bottom:12px}.lv .nm{font-size:13px;margin-bottom:8px}.lv small{font-size:11px}.btn{border:1px solid #88b78955;border-bottom-width:3px;background:#18372c;font-size:14px;padding:14px 22px;border-radius:10px}.btn.g{background:#749e37;color:#061508;border-color:#a7d65a}
+.field{background:#061413}.hud{height:60px;flex-shrink:0;border-bottom:1px solid #b4de8133;background:#071b17;padding-left:68px;padding-right:125px;font-size:14px}.hud .sc{font:900 20px monospace;color:var(--acid)}.hud .cmb{font-size:12px}.hearts{letter-spacing:5px}
+.layer{isolation:isolate;background:#0c231f}.layer>.world{z-index:-2}.layer::before{display:none}.zone-label{position:absolute;left:18px;top:16px;color:#c7e2c385;font:9px monospace;letter-spacing:2px;z-index:1}.zone-label b{display:block;color:#cdf195;margin-top:6px;font-size:12px;letter-spacing:1px}.target-help{position:absolute;top:16px;right:18px;font:9px monospace;letter-spacing:1px;color:#adc2ad}
+.base{height:22px;background:repeating-linear-gradient(120deg,#293b2c 0 22px,#a7ab5c 22px 40px);border-top:3px solid #d9da82;box-shadow:0 -6px 22px #bbeb6833;z-index:60}.base::after{content:'ZONA PERTAHANAN';top:-24px;font:9px monospace;letter-spacing:4px;color:#d7e79b;background:#081f18c9;padding:5px 12px;border-radius:5px}
+.z{width:190px;will-change:transform;--skin:#86ba66;--shade:#4e7848;--shirt:#5b7680;--cloth:#344c58;--step:.8s}.z.variant-1{--skin:#a9b85e;--shade:#727e3f;--shirt:#96704f;--cloth:#5a4839;--step:.95s}.z.variant-2{--skin:#71b5a0;--shade:#467e72;--shirt:#7d638f;--cloth:#4c425c;--step:.7s}
+.z .board{z-index:3;max-width:245px;font:900 23px/1.2 monospace;padding:7px 13px;background:#092922;border:2px solid #b9e790;border-radius:7px;color:#efffd7;box-shadow:0 4px 0 #03150d,0 0 20px #b6ff5230;text-shadow:none}.z .board::after{height:17px;bottom:-18px;background:#758c5a;width:5px}.z .zb{font-size:initial;line-height:0;width:130px;margin:7px auto 0;filter:drop-shadow(0 7px 6px #0008);animation:body-sway var(--step) ease-in-out infinite alternate;transform-origin:50% 85%}.z.t .board{border-color:#ffe6a0;background:#41331d;box-shadow:0 0 20px #ffca6344;animation:board-glow 1.5s ease-in-out infinite alternate}.z.t .zb{filter:drop-shadow(0 0 8px #dfda6570)}
+.z svg,.hero-zombie svg{width:100%;height:auto;overflow:visible}.zombie-art .skin{fill:var(--skin,#86ba66)}.zombie-art .shade{fill:var(--shade,#4e7848)}.zombie-art .shirt{fill:var(--shirt,#5b7680)}.zombie-art .cloth{fill:var(--cloth,#344c58)}.zombie-art .leg-l{transform-origin:63px 132px;animation:limb var(--step,.9s) ease-in-out infinite alternate}.zombie-art .leg-r{transform-origin:100px 132px;animation:limb var(--step,.9s) ease-in-out infinite alternate-reverse}.zombie-art .arm-l{transform-origin:49px 90px;animation:reach 1.1s ease-in-out infinite alternate}.zombie-art .arm-r{transform-origin:109px 90px;animation:reach 1.3s ease-in-out infinite alternate-reverse}.zombie-art .head{transform-origin:80px 80px;animation:head-tilt 2s ease-in-out infinite alternate}.zombie-art .eye-light{animation:eye-glow 3.2s infinite}
+.target-ring{position:absolute;width:100px;height:22px;border:2px dashed #edda7b;border-radius:50%;bottom:-5px;left:45px;opacity:0;box-shadow:0 0 20px #e9ed6322}.z.t .target-ring{opacity:1;animation:ring-pulse 1.5s infinite alternate}
+@keyframes body-sway{from{transform:translateY(0) rotate(-3deg)}to{transform:translateY(-5px) rotate(3deg)}}@keyframes limb{from{transform:rotate(-9deg)}to{transform:rotate(10deg)}}@keyframes reach{from{transform:rotate(-9deg)}to{transform:rotate(7deg)}}@keyframes head-tilt{to{transform:rotate(-7deg) translateY(2px)}}@keyframes eye-glow{0%,46%,52%,100%{opacity:1}49%{opacity:.15}}@keyframes board-glow{to{box-shadow:0 0 30px #ffdf6866}}@keyframes ring-pulse{to{transform:scaleX(1.13);opacity:.55}}
+.z.dead .zb{animation:vanish .55s ease-in forwards}.z.dead svg *{animation-play-state:paused}.z.dead .target-ring{display:none}@keyframes vanish{25%{transform:translateY(-14px) rotate(-12deg);filter:brightness(2)}to{transform:translateY(20px) rotate(55deg) scale(.45);opacity:0}}
+.shot{position:absolute;height:3px;transform-origin:0 50%;background:#f0ffc1;box-shadow:0 0 12px #cdff67;z-index:64;pointer-events:none;animation:shot .18s ease-out forwards}.spark{position:absolute;width:7px;height:7px;border-radius:2px;background:var(--acid);box-shadow:0 0 10px #ddff83;z-index:65;pointer-events:none;animation:spark .6s ease-out forwards}.impact{position:absolute;width:70px;height:70px;border:3px solid #e3ffac;border-radius:50%;z-index:65;pointer-events:none;animation:impact .4s ease-out forwards}@keyframes shot{to{opacity:0}}@keyframes spark{to{translate:var(--dx) var(--dy);rotate:160deg;opacity:0}}@keyframes impact{from{transform:translate(-50%,-50%) scale(.2)}to{transform:translate(-50%,-50%) scale(1.5);opacity:0}}
+.ans{padding:12px max(16px,calc((100% - 960px)/2));grid-template-columns:repeat(4,1fr);gap:12px;background:#061b16;border-top:1px solid #72925255;flex-shrink:0}.ans button,.field.p1 .ans button:not(.x){background:linear-gradient(#244739,#16362b);border:1px solid #6d8b5f88;border-bottom:4px solid #416245;border-radius:12px;font:900 clamp(22px,3vw,34px) monospace;padding:12px 6px;color:#edffd7;min-height:70px}.field.p2 .ans button:not(.x){background:linear-gradient(#46334e,#2d2339);border-color:#926ca3}.ans button:hover:not(:disabled):not(.x){border-color:var(--acid);background:#32563d}.ans button small{font:9px monospace;letter-spacing:1px;color:#9cb79e;margin-top:6px}.ans button.x{background:#662c2c}.ans button:disabled{opacity:.4}.arena.vs .ans{padding:10px;gap:8px}.arena.vs .hud{padding:5px 14px;height:60px}.arena.vs .field:first-child .hud{padding-left:62px}.arena.vs .field:last-child .hud{padding-right:120px}.arena.vs .ans button{font-size:25px;min-height:60px}
+.msg{background:linear-gradient(140deg,#183b2b,#081b17);border:1px solid #a1cd6877;box-shadow:0 25px 100px #000;border-radius:24px}.big{color:var(--acid)}
+@media(max-width:760px){#menu{padding:78px 6vw 40px;justify-content:center}#menu h1{font-size:clamp(60px,13vw,96px)}.hero-zombie{right:-8%;bottom:36%;width:39vw;opacity:.55}.hero-tag,.hero-caption{display:none}#menu .cards{max-width:100%;z-index:2}.intro{max-width:70%;font-size:12px;margin-bottom:20px}.eyebrow{font-size:9px;letter-spacing:2px;margin-bottom:16px}.card{padding:16px}.card .t{font-size:16px}.card small{font-size:10px}.brandmark{top:30px;font-size:9px;letter-spacing:1px}.top{top:18px;right:14px}#menu h2.sub{font-size:10px;margin-top:18px}.credit{font-size:9px;margin-top:20px}.hud{height:58px;font-size:12px;padding-left:60px;padding-right:112px;gap:4px}.hud .sc{font-size:16px}.hud .cmb{font-size:9px;min-width:0}.hearts{letter-spacing:0}.ans{gap:7px;padding:10px}.ans button{font-size:24px;min-height:66px}.target-help{font-size:7px;max-width:110px;text-align:right}.zone-label{font-size:7px}.zone-label b{font-size:9px}.arena.vs .field:last-child .hud{padding-right:12px}.arena.vs .field:first-child .hud{padding-right:110px}.arena.vs .hud{height:44px}.arena.vs .ans button{min-height:48px;padding:5px;font-size:20px}.arena.vs .ans{padding:6px}.arena.vs .zone-label,.arena.vs .target-help{display:none}#levels .cards{grid-template-columns:1fr 1fr;gap:10px}.lv{padding:15px}.lv .n{font-size:36px;margin:0}.lv .nm{font-size:11px}.msg h2{font-size:40px!important}}
+@media(max-height:600px) and (orientation:landscape){#menu{padding-top:65px;padding-bottom:20px}#menu h1{font-size:65px}#menu h2.sub{margin:12px 0}.eyebrow{margin-bottom:10px}.intro{margin-bottom:14px}.card{padding:12px 16px}.card .e{display:none}.credit{margin-top:12px}.hero-zombie{width:25vw;bottom:13%}.screen{overflow-y:auto}.arena.vs .hud{height:45px}.ans button{min-height:50px;padding:5px}.ans{padding-top:6px;padding-bottom:6px}.arena.vs .field:last-child .hud{padding-right:116px}.arena.vs .field:first-child .hud{padding-right:12px}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;transition-duration:.01ms!important}.mist,.firefly{display:none}}
+/* Keep long questions centered and inside narrow arenas. */
+.z .board{display:table;left:50%;transform:translateX(-50%);margin:0}
+@keyframes fall{to{transform:translate(-50%,60px) rotate(-30deg);opacity:0}}
+@media(max-width:430px){.ans button{font-size:clamp(16px,5.4vw,24px)}.arena.vs .ans button{font-size:clamp(16px,5vw,20px)}}
+@media(max-height:500px) and (orientation:landscape){#menu{justify-content:flex-start;padding-top:65px}#menu h1{font-size:48px}#menu h1 span{display:inline}#menu .intro{margin-bottom:10px;font-size:11px}#menu h2.sub{margin:10px 0;font-size:10px}.card small{font-size:10px}.card .t{font-size:15px}.credit{margin-top:8px}.eyebrow{font-size:9px;margin-bottom:9px}}
 
-        .font-zombie {
-            font-family: 'Creepster', cursive;
-        }
-
-        /* Animations */
-        @keyframes float-spooky {
-            0% { transform: translateY(0px) rotate(0deg); }
-            50% { transform: translateY(-15px) rotate(5deg); }
-            100% { transform: translateY(0px) rotate(0deg); }
-        }
-
-        @keyframes blood-splat {
-            0% { transform: scale(0); opacity: 1; }
-            50% { transform: scale(1.5); opacity: 0.8; }
-            100% { transform: scale(2); opacity: 0; }
-        }
-
-        @keyframes shake-hard {
-            0% { transform: translate(1px, 1px) rotate(0deg); }
-            10% { transform: translate(-1px, -2px) rotate(-1deg); }
-            20% { transform: translate(-3px, 0px) rotate(1deg); }
-            30% { transform: translate(3px, 2px) rotate(0deg); }
-            40% { transform: translate(1px, -1px) rotate(1deg); }
-            50% { transform: translate(-1px, 2px) rotate(-1deg); }
-            60% { transform: translate(-3px, 1px) rotate(0deg); }
-            70% { transform: translate(3px, 1px) rotate(-1deg); }
-            80% { transform: translate(-1px, -1px) rotate(1deg); }
-            90% { transform: translate(1px, 2px) rotate(0deg); }
-            100% { transform: translate(1px, -2px) rotate(-1deg); }
-        }
-
-        .animate-spooky { animation: float-spooky 4s ease-in-out infinite; }
-        .animate-splat { animation: blood-splat 0.4s ease-out forwards; }
-        .animate-shake { animation: shake-hard 0.5s; }
-
-        /* Custom Backgrounds */
-        .bg-graveyard {
-            background-color: #0f172a;
-            background-image: 
-                linear-gradient(to bottom, rgba(15, 23, 42, 0.8), rgba(15, 23, 42, 0.6)),
-                url('https://i.imgur.com/WZDItop.png');
-            background-size: cover;
-            background-position: center;
-            background-repeat: no-repeat;
-        }
-        
-        .fog-overlay {
-            position: absolute;
-            bottom: 0;
-            left: 0;
-            width: 100%;
-            height: 40%;
-            background: linear-gradient(to top, rgba(20, 83, 45, 0.4), transparent);
-            pointer-events: none;
-            z-index: 5;
-        }
-
-        /* Scrollbar hide */
-        ::-webkit-scrollbar { display: none; }
-        
-        /* Tombol Game Responsif */
-        .game-btn:active {
-            transform: scale(0.95);
-        }
-    </style>
+.player-status{display:flex;flex-direction:column;gap:2px;flex-shrink:0}.arena.vs .hearts{font-size:11px;letter-spacing:1px;white-space:nowrap}.arena.vs .bar{min-width:0}.pop{font-size:clamp(18px,4vw,30px)}
+.solo-mission{display:grid;grid-template-columns:1fr auto;gap:7px 12px;padding:9px 18px;background:#10291f;border-bottom:1px solid #b4de8133;flex-shrink:0;color:#c9fb6c;font:700 11px monospace;letter-spacing:1px}.solo-mission .bar{grid-column:1 / -1;margin:0;height:5px}.solo-mission strong{color:#efffd7;white-space:nowrap}
+#lvList{grid-template-columns:repeat(3,minmax(0,1fr));flex-shrink:0}#levels{overflow-y:auto;justify-content:safe center;touch-action:pan-y}#levels>h2,#lvBack{flex-shrink:0}body{touch-action:manipulation}#game{touch-action:none}
+@media(max-width:760px){#levels #lvList{grid-template-columns:repeat(2,minmax(0,1fr))}}
+@media(max-height:650px){#levels{padding-top:70px;padding-bottom:24px}#levels .lv{padding:12px}#levels .lv .n{font-size:30px;margin-bottom:4px}#levels .lv .nm{font-size:11px}#levels .lv small{font-size:10px}}
+</style>
 </head>
-<body class="h-screen w-screen bg-graveyard">
-    <div id="root"></div>
+<body>
+<audio id="bgm" loop src="https://github.com/belajarituseru39-gif/marsedalas/raw/refs/heads/main/MARS%20SD%20011%20Bppn.mp3"></audio>
 
-    <script type="text/babel">
-        const { useState, useEffect, useRef } = React;
+<div class="brandmark"><b>✚</b> ZM / NIGHTFALL</div><div class="top">
+  <button id="bFs" title="Layar penuh">⛶</button>
+  <button id="bMu" title="Musik">🔇</button>
+</div>
 
-        // --- GAME CONSTANTS & LOGIC ---
-        const BGM_URL = "https://github.com/belajarituseru39-gif/marsedalas/raw/refs/heads/main/MARS%20SD%20011%20Bppn.mp3";
+<!-- MENU -->
+<div class="screen on" id="menu">
+  <div class="eyebrow">MISI BERTAHAN HIDUP DIMULAI</div><h1 class="zf">ZOMBIE <span>MATH</span></h1>
+  <h2 class="sub">Hitung cepat. Bertahan hidup.</h2><p class="intro">Kota telah dikuasai. Jaga bentengmu dengan<br>jawaban yang tepat. Siap menghadapi mereka?</p><div class="hero-zombie" aria-hidden="true"></div>
+  <div class="cards">
+    <button class="card" data-mode="1"><div class="e">⌖</div><span class="arrow">↗</span><div class="t zf" style="color:#4ade80">Solo Survival</div><small>Misi: raih 100 poin sebelum nyawa habis. Salah = −1 nyawa.</small></button>
+    <button class="card" data-mode="2"><div class="e">⚔</div><span class="arrow">↗</span><div class="t zf" style="color:#c084fc">Versus Battle</div><small>Raih 100 poin atau bertahan saat nyawa lawan habis.</small></button>
+  </div>
+  <div class="credit">Ide Permainan oleh <b>Abdul Rahmat, S.Pd</b><br>SDN 011 Balikpapan Tengah | Kontak: 081351767574</div>
+</div>
 
-        const LEVELS = {
-            1: { name: 'Mudah (Satuan)', min: 1, max: 9 },
-            2: { name: 'Sedang (Puluhan)', min: 10, max: 99 },
-            3: { name: 'Sulit (Ratusan)', min: 100, max: 999 },
-            4: { name: 'Mimpi Buruk (Ribuan)', min: 1000, max: 9999 },
-        };
+<!-- LEVEL -->
+<div class="screen" id="levels">
+  <h2 class="zf" style="font-size:clamp(40px,8vw,64px);color:#ef4444;margin:0 0 18px">Pilih Level</h2>
+  <div class="cards" id="lvList" style="max-width:900px"></div>
+  <button class="btn" id="lvBack" style="margin-top:20px">KEMBALI KE MARKAS</button>
+</div>
 
-        const generateQuestion = (level) => {
-            const { min, max } = LEVELS[level];
-            let num1 = Math.floor(Math.random() * (max - min + 1)) + min;
-            let num2 = Math.floor(Math.random() * (max - min + 1)) + min;
-            const isAddition = Math.random() > 0.5;
+<!-- GAME -->
+<div id="game"><button class="back" id="bBack" title="Keluar">✕</button><div class="arena" id="arena"></div></div>
 
-            if (!isAddition && num1 < num2) {
-                [num1, num2] = [num2, num1];
-            }
+<!-- GAME OVER -->
+<div class="screen" id="over" style="background:rgba(0,0,0,.85);z-index:100">
+  <div class="msg">
+    <h2 class="zf" id="ovTitle" style="font-size:56px;color:#dc2626;margin:0">GAME OVER</h2>
+    <p id="ovSub" style="color:#9ca3af;margin:6px 0">Total Kill Score</p>
+    <div class="big" id="ovScore">0</div>
+    <p id="ovBest" style="color:#facc15;margin:0 0 16px"></p>
+    <div style="display:flex;gap:12px;justify-content:center;flex-wrap:wrap">
+      <button class="btn g" id="ovAgain">🔄 MAIN LAGI</button>
+      <button class="btn" id="ovLevel">⚙️ GANTI LEVEL</button>
+      <button class="btn" id="ovMenu">MENU</button>
+    </div>
+  </div>
+</div>
 
-            const answer = isAddition ? num1 + num2 : num1 - num2;
-            const operator = isAddition ? '+' : '-';
+<script>
+function zombieArt(){return `<svg class="zombie-art" viewBox="0 0 160 200" aria-hidden="true">
+<ellipse cx="81" cy="190" rx="45" ry="8" fill="#000" opacity=".3"/>
+<g stroke="#142d27" stroke-width="3" stroke-linejoin="round">
+<g class="leg-l"><path d="M51 126L76 128 70 173 49 176Z" fill="#394442"/><path d="M49 168L69 171 70 187 38 187Q34 177 49 177Z" fill="#1c2c2c"/><path d="M51 145l19 3" stroke="#7f8d71"/></g>
+<g class="leg-r"><path d="M85 126L108 123 113 172 92 177Z" fill="#414c46"/><path d="M91 169L113 169 126 183Q128 190 113 190L91 187Z" fill="#1c2c2c"/><path d="M91 150l18-2" stroke="#7f8d71"/></g>
+<path class="shirt" d="M51 82L70 77 94 78 111 86 112 131 97 141 88 133 76 141 64 134 48 138Z"/>
+<path class="cloth" d="M77 85L89 84 94 134 79 140Z" stroke="none"/><path d="M54 111l14 5-6 13-10-3" fill="#bdc997"/><path d="M55 117l8 3M81 96v7m2 9v7" fill="none" stroke="#b0c5ad" stroke-width="2"/>
+<g class="arm-l"><path class="shirt" d="M51 85Q35 82 32 98L24 118 41 125 57 100Z"/><path class="skin" d="M25 112L42 120 27 143 13 141 8 130 10 117 16 116 17 128Z"/><path d="M15 130l7 3m-3-12 7 4" stroke="#4e7848" stroke-width="2"/></g>
+<g class="arm-r"><path class="shirt" d="M107 85Q124 81 129 99L136 115 120 124 105 102Z"/><path class="skin" d="M122 116L137 109 148 124 148 139 141 143 130 138 128 129Z"/><path d="M138 124v10m5-8v10" stroke="#4e7848" stroke-width="2"/></g>
+<path class="shade" d="M68 69H94V88Q80 98 67 86Z"/>
+<g class="head"><path class="skin" d="M47 37Q41 8 72 8L99 13Q116 19 112 45L109 66Q103 83 75 81L52 67Z"/>
+<path class="shade" d="M47 38L58 51 57 66 77 79 64 77 51 67Z" stroke="none"/>
+<path class="skin" d="M48 42Q33 35 37 52L49 57M111 43Q123 37 119 53L109 57"/>
+<path d="M46 30L45 16 55 20 58 7 68 12 79 5 85 13 101 9 111 22 110 32 99 23 83 26 69 20 59 32" fill="#243f34"/>
+<path d="M55 34l15 3m18-3 14-4" stroke="#36583a" stroke-width="4"/>
+<ellipse cx="64" cy="46" rx="12" ry="11" fill="#253b2d"/><ellipse cx="95" cy="43" rx="11" ry="10" fill="#253b2d"/>
+<g class="eye-light" fill="#e6ff92" stroke="none"><ellipse cx="65" cy="46" rx="6" ry="6"/><ellipse cx="94" cy="43" rx="5" ry="5"/></g>
+<path d="M78 48l-4 10 8 1" fill="none" stroke="#4e7848"/><path d="M64 65Q81 58 99 61L94 73 70 72Z" fill="#203a2a"/><path d="M70 64v5h6v-6m11-1v6h6v-7" fill="#e0dcb0" stroke="none"/>
+<path d="M97 20l-5 7m-2-5 6 3M53 58l7 1" fill="none" stroke="#49693e" stroke-width="2"/>
+</g></g></svg>`;}
+let sceneId=0;
+function scenery(){
+ const key=++sceneId;
+ const buildings=Array.from({length:19},(_,i)=>{const x=i*88-35,h=65+((i*79)%145),y=510-h;return `<g><path d="M${x} 520V${y}h${35+i%3*12}v-12h16v12h24V520Z" fill="${i%2?'#102d2e':'#0a2428'}"/>${Array.from({length:6},(_,j)=>`<rect x="${x+10+(j%3)*20}" y="${y+25+Math.floor(j/3)*30}" width="5" height="10" fill="${(i+j)%4?'#75bdaa':'#ddcd80'}" opacity="${(i+j)%4?'.13':'.5'}"/>`).join('')}</g>`}).join('');
+ return `<div class="world" aria-hidden="true"><svg class="landscape" viewBox="0 0 1600 900" preserveAspectRatio="xMidYMid slice"><defs><linearGradient id="sky-${key}" x2="0" y2="1"><stop stop-color="#081b29"/><stop offset=".58" stop-color="#28544e"/><stop offset="1" stop-color="#0c211c"/></linearGradient><radialGradient id="moon-${key}"><stop stop-color="#d7ecb4" stop-opacity=".27"/><stop offset="1" stop-color="#cfe99e" stop-opacity="0"/></radialGradient><linearGradient id="road-${key}" x2="0" y2="1"><stop stop-color="#335b4a"/><stop offset="1" stop-color="#172922"/></linearGradient></defs><path fill="url(#sky-${key})" d="M0 0h1600v900H0Z"/>
+ <circle cx="1125" cy="204" r="240" fill="url(#moon-${key})"/><circle cx="1125" cy="204" r="82" fill="#e4eac1"/><circle cx="1104" cy="182" r="18" fill="#c6d4ac" opacity=".5"/><circle cx="1154" cy="231" r="25" fill="#c6d4ac" opacity=".4"/><circle cx="1093" cy="224" r="10" fill="#c6d4ac" opacity=".4"/>
+ <g fill="#ccefc0" opacity=".5">${Array.from({length:35},(_,i)=>`<circle cx="${(i*239)%1600}" cy="${30+(i*43)%290}" r="${i%3===0?1.5:.8}"/>`).join('')}</g>
+ <path d="M0 390L80 340 140 374 210 300 290 360 400 331 500 390 580 320 660 375 770 337 850 395 950 325 1100 376 1210 320 1330 368 1450 310 1600 370V600H0" fill="#1c3d3d"/>${buildings}
+ <path d="M0 494Q400 475 800 502T1600 480V900H0" fill="#102c24"/><path d="M775 492L844 492 1370 900H220Z" fill="url(#road-${key})"/><path d="M802 512l13 0 5 18h-20Zm-6 45h27l10 40h-44Zm-19 82h62l23 77h-103Zm-36 134h140l44 127H700Z" fill="#b4c786" opacity=".13"/><path d="M775 494L220 900M844 494l526 406" stroke="#7ba673" stroke-opacity=".18" stroke-width="3"/>
+ <g fill="#091f1d" stroke="#091f1d" stroke-linecap="round"><path d="M154 680L185 280 201 680ZM185 410L89 319 43 304 101 337 179 456M189 355L247 275 260 212 239 272 193 322M184 496L294 412 335 412 291 430 182 535M180 380L140 236 104 212 132 246 178 415" stroke-width="12"/><path d="M1467 750L1425 315 1405 750ZM1420 478L1346 380 1282 349 1331 391 1414 522M1428 430L1510 334 1572 310 1518 350 1433 472M1416 577L1322 504 1277 510 1321 521 1417 621" stroke-width="15"/></g>
+ <g fill="#1f3d31" stroke="#567455" stroke-width="2"><path d="M348 633l-12-81q22-27 45-4l17 80Z"/><path d="M1200 628l5-69q23-23 44 2l-4 70Z"/><path d="M109 806l-12-102q28-27 53-6l17 102Z"/></g><g stroke="#81956c" stroke-width="3" opacity=".5"><path d="M353 565l20-3m-8-7 3 28M1217 569v23m-8-15h19M116 714l23-3m-15-5 4 30"/></g>
+ <g fill="#061b16">${Array.from({length:25},(_,i)=>{const x=i*71,y=685+(i*31)%200;return `<path d="M${x} ${y}l-12-32 15 19 3-40 9 37 14-22-10 38Z"/>`}).join('')}</g><g fill="#091e23"><path d="M985 156q-18-20-31-10l20 7 11 12 11-12 20-7q-16-9-31 10M1269 279q-14-17-28-10l19 8 9 9 9-9 18-8q-13-7-27 10"/></g></svg><div class="mist"></div><div class="mist two"></div>${Array.from({length:12},(_,i)=>`<i class="firefly" style="left:${(i*17+9)%100}%;top:${35+(i*13)%62}%;--duration:${7+i%5}s;--delay:-${i*1.3}s"></i>`).join('')}</div>`;
+}
+document.body.insertAdjacentHTML('afterbegin',scenery());
+document.querySelector('.hero-zombie').innerHTML='<div class="zb">'+zombieArt()+'</div><span class="hero-tag">ANCAMAN TERDETEKSI</span><span class="hero-caption">JANGAN BIARKAN MENDEKAT.</span>';
 
-            let distractors = new Set();
-            while (distractors.size < 3) {
-                let offset = Math.floor(Math.random() * 10) + 1;
-                if (Math.random() > 0.5) offset *= -1;
-                let d = answer + offset;
-                if (d >= 0 && d !== answer) distractors.add(d);
-            }
+const $ = s => document.querySelector(s);
+const LEVELS = {
+  1:{name:'Mudah (Satuan)',min:1,max:9,c:'#16a34a'},
+  2:{name:'Sedang (Puluhan)',min:10,max:99,c:'#ca8a04'},
+  3:{name:'Sulit (Ratusan)',min:100,max:999,c:'#ea580c'},
+  4:{name:'Mimpi Buruk (Ribuan)',min:1000,max:9999,c:'#dc2626'},
+  5:{name:'Perkalian',min:1,max:10,c:'#0891b2',operation:'multiply',pace:2,description:'Perkalian 1–10 · contoh: 6 × 7'},
+  6:{name:'Pembagian',min:1,max:10,c:'#9333ea',operation:'divide',pace:2,description:'Hasil bulat 1–10 · contoh: 42 ÷ 6'}
+};
+const WIN_SCORE = 100, SOLO_WIN_SCORE = 100, MAX_LIVES = 3;
 
-            return {
-                num1,
-                num2,
-                operator,
-                answer,
-                options: [answer, ...Array.from(distractors)].sort(() => Math.random() - 0.5)
-            };
-        };
+/* ---------- Soal ---------- */
+function genQ(level){
+  const {min,max,operation} = LEVELS[level];
+  const randomNumber = () => Math.floor(Math.random()*(max-min+1))+min;
+  let a = randomNumber(), b = randomNumber(), answer, symbol;
+  if(operation === 'multiply'){
+    symbol = '×'; answer = a*b;
+  } else if(operation === 'divide'){
+    // Generate the dividend from a positive divisor and integer quotient.
+    symbol = '÷'; answer = a; a = answer*b;
+  } else {
+    const add = Math.random() > .5;
+    if(!add && a < b) [a,b] = [b,a];
+    symbol = add ? '+' : '−'; answer = add ? a+b : a-b;
+  }
+  const d = new Set();
+  while(d.size < 3){
+    let o = Math.floor(Math.random()*10)+1;
+    if(Math.random() > .5) o = -o;
+    const v = answer + o;
+    if(v >= 0 && v !== answer) d.add(v);
+  }
+  return {text:`${a} ${symbol} ${b}`, answer, options:[answer,...d].sort(()=>Math.random()-.5)};
+}
 
-        // --- INLINE SVGs ---
-        const Icons = {
-            Skull: ({ className = "w-6 h-6" }) => (
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-                    <path d="M12 11c-2.3 0-5.5 1.6-4.5 5.5.8 3.3 2.5 5.5 4.5 5.5s3.7-2.2 4.5-5.5c1-3.9-2.2-5.5-4.5-5.5z"/>
-                    <path d="M8 11V7a4 4 0 0 1 8 0v4"/>
-                    <line x1="9" y1="14" x2="10" y2="14"/>
-                    <line x1="14" y1="14" x2="15" y2="14"/>
-                </svg>
-            ),
-            Ghost: ({ className = "w-6 h-6" }) => (
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-                    <path d="M9 22v-3h6v3" />
-                    <path d="M12 2a9 9 0 0 0-9 9v11l4-4 4 4 5-4 5 4V11a9 9 0 0 0-9-9z" />
-                    <path d="M10 10h.01" />
-                    <path d="M14 10h.01" />
-                </svg>
-            ),
-            Clock: ({ className = "w-6 h-6" }) => (
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-                    <circle cx="12" cy="12" r="10"/>
-                    <polyline points="12 6 12 12 16 14"/>
-                </svg>
-            ),
-            Users: ({ className = "w-6 h-6" }) => (
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-                    <path d="M16 21v-2a4 4 0 0 0-4-4H6a4 4 0 0 0-4 4v2"/>
-                    <circle cx="9" cy="7" r="4"/>
-                    <path d="M22 21v-2a4 4 0 0 0-3-3.87"/>
-                    <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-                </svg>
-            ),
-            Volume2: ({ className = "w-6 h-6" }) => (
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
-                    <path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"/>
-                </svg>
-            ),
-            VolumeX: ({ className = "w-6 h-6" }) => (
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-                    <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"/>
-                    <line x1="23" y1="9" x2="17" y2="15"/>
-                    <line x1="17" y1="9" x2="23" y2="15"/>
-                </svg>
-            ),
-            Crosshair: ({ className = "w-6 h-6" }) => (
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-                    <circle cx="12" cy="12" r="10"/>
-                    <line x1="22" y1="12" x2="18" y2="12"/>
-                    <line x1="6" y1="12" x2="2" y2="12"/>
-                    <line x1="12" y1="6" x2="12" y2="2"/>
-                    <line x1="12" y1="22" x2="12" y2="18"/>
-                </svg>
-            ),
-            Biohazard: ({ className = "w-6 h-6" }) => (
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-                    <circle cx="12" cy="12" r="2"/>
-                    <path d="M4.93 19.07a10 10 0 0 1 1.95-7.03 10 10 0 0 1 7.03-1.94 10 10 0 0 1 7.03 1.94 10 10 0 0 1 1.95 7.03"/>
-                    <path d="M12 14v8"/>
-                    <path d="M9.68 12.32a10 10 0 0 1-7.03-1.95 10 10 0 0 1-1.94-7.03 10 10 0 0 1 1.94-7.03 10 10 0 0 1 7.03-1.95"/>
-                    <path d="M14.32 12.32a10 10 0 0 0 7.03-1.95 10 10 0 0 0 1.94-7.03 10 10 0 0 0-1.94-7.03 10 10 0 0 0-7.03-1.95"/>
-                </svg>
-            ),
-            RefreshCw: ({ className = "w-6 h-6" }) => (
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-                    <path d="M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8"/>
-                    <path d="M21 3v5h-5"/>
-                    <path d="M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16"/>
-                    <path d="M8 16H3v5"/>
-                </svg>
-            ),
-            Maximize: ({ className = "w-6 h-6" }) => (
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-                    <path d="M8 3H5a2 2 0 0 0-2 2v3m18 0V5a2 2 0 0 0-2-2h-3m0 18h3a2 2 0 0 0 2-2v-3M3 16v3a2 2 0 0 0 2 2h3"/>
-                </svg>
-            ),
-            Minimize: ({ className = "w-6 h-6" }) => (
-                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}>
-                    <path d="M8 3v3a2 2 0 0 1-2 2H3m18 0h-3a2 2 0 0 1-2-2V3m0 18v-3a2 2 0 0 1 2-2h3M3 16h3a2 2 0 0 1 2 2v3"/>
-                </svg>
-            )
-        };
+/* ---------- Suara sederhana ---------- */
+let ac;
+function beep(f,d,type='square',v=.08,f2){
+  try{
+    ac = ac || new (window.AudioContext||window.webkitAudioContext)();
+    const o = ac.createOscillator(), g = ac.createGain();
+    o.type = type; o.frequency.setValueAtTime(f,ac.currentTime);
+    if(f2) o.frequency.exponentialRampToValueAtTime(f2,ac.currentTime+d);
+    g.gain.setValueAtTime(v,ac.currentTime); g.gain.exponentialRampToValueAtTime(.001,ac.currentTime+d);
+    o.connect(g); g.connect(ac.destination); o.start(); o.stop(ac.currentTime+d);
+  }catch(e){}
+}
+const sfx = {
+  shoot:()=>{beep(900,.12,'sawtooth',.1,150)},
+  kill:()=>{beep(300,.2,'square',.08,80)},
+  wrong:()=>{beep(150,.25,'sawtooth',.1,90)},
+  hit:()=>{beep(90,.5,'sawtooth',.18,40)},
+  spawn:()=>{beep(110,.3,'triangle',.05,70)}
+};
 
-        // --- COMPONENTS ---
+/* ---------- Medan permainan (dipakai Solo & Versus) ---------- */
+class Field{
+  constructor(root, level, o){
+    this.root = root; this.level = level; this.o = o;
+    this.score = 0; this.lives = MAX_LIVES; this.combo = 0;
+    this.zs = []; this.target = null; this.t = 0; this.spawnIn = .5; this.id = 0; this.alive = true;
+    const vs = o.versus;
+    root.innerHTML = `
+      <div class="hud">
+        ${vs ? `<span class="player-status"><span class="pn">P${o.player}</span><span class="hearts" aria-live="polite"></span></span><div class="bar"><i></i></div>` : `<span class="hearts" aria-live="polite"></span>`}
+        <span class="sc">${vs?'':'SKOR '}<b class="scv">0</b></span>
+        <span class="cmb"></span>
+      </div>
+      ${!vs ? `<div class="solo-mission"><span>MISI: RAIH ${SOLO_WIN_SCORE} POIN</span><strong class="mission-count">0 / ${SOLO_WIN_SCORE}</strong><div class="bar" role="progressbar" aria-label="Progres misi solo" aria-valuemin="0" aria-valuemax="${SOLO_WIN_SCORE}" aria-valuenow="0"><i></i></div></div>` : ''}
+      <div class="layer">${scenery()}<div class="zone-label">${LEVELS[level].operation ? LEVELS[level].name.toUpperCase() : "AREA TERINFEKSI"}<b>SEKTOR 0${level} / ${o.versus ? "DUEL" : "SURVIVAL"}</b></div><div class="target-help">TARGET KUNING · SALAH = −1 NYAWA</div><div class="base"></div></div>
+      <div class="ans">${[0,1,2,3].map(i=>`<button data-i="${i}" disabled>…</button>`).join('')}</div>`;
+    this.layer = root.querySelector('.layer');
+    this.btns = [...root.querySelectorAll('.ans button')];
+    this.btns.forEach(b => b.addEventListener('pointerdown', e => {e.preventDefault(); this.answer(+b.dataset.i);}));
+    this.hud();
+  }
+  spawn(){
+    const used = this.zs.filter(z=>!z.dead).map(z=>z.lane);
+    let free = [-1,0,1].filter(l=>!used.includes(l));
+    if(!free.length) free = [-1,0,1];
+    const lane = free[Math.floor(Math.random()*free.length)];
+    const q = genQ(this.level);
+    const el = document.createElement('div');
+    el.className = 'z variant-' + (this.id % 3);
+    el.innerHTML = `<div class="board">${q.text}</div><div class="zb">${zombieArt()}</div><div class="target-ring"></div>`;
+    this.layer.appendChild(el);
+    this.zs.push({id:++this.id, el, q, lane, p:0, dead:false});
+    sfx.spawn();
+  }
+  update(dt){
+    if(!this.alive) return;
+    this.t += dt;
+    const difficulty = LEVELS[this.level].pace ?? this.level;
+    const speed = (0.055 + difficulty*0.012) * (1 + this.t/100);
+    const alive = this.zs.filter(z=>!z.dead);
+    this.spawnIn -= dt;
+    const maxZ = difficulty >= 3 ? 4 : 3;
+    if(this.spawnIn <= 0 && alive.length < maxZ){
+      this.spawn();
+      this.spawnIn = Math.max(2.2, 5.5 - this.t/35 - difficulty*.25);
+    }
+    const H = this.layer.clientHeight, k = Math.max(.5, Math.min(1.2, H/380));
+    for(const z of this.zs){
+      if(z.dead) continue;
+      z.p += speed*dt;
+      const p = Math.min(z.p,1.05);
+      const scale=(.32+.85*p)*k, W=this.layer.clientWidth;
+      const half=Math.max(190,z.el.querySelector('.board').offsetWidth)*scale/2+8;
+      const left=Math.max(half,Math.min(W-half,W*(.5+z.lane*(.07+p*.27))));
+      z.el.style.left = left + 'px';
+      z.el.style.top = (56 + p*44) + '%';
+      z.el.style.zIndex = Math.round(p*50);
+      z.el.style.transform = `translate(-50%,-100%) scale(${(.32+.85*p)*k})`;
+      if(z.p >= 1){ this.baseHit(z); if(!this.alive) return; }
+    }
+    const nowAlive = this.zs.filter(z=>!z.dead).sort((a,b)=>b.p-a.p);
+    const t = nowAlive[0] || null;
+    if(t !== this.target){
+      this.zs.forEach(z=>z.el.classList.remove('t'));
+      this.target = t;
+      if(t) t.el.classList.add('t');
+      this.setButtons();
+    }
+  }
+  setButtons(){
+    const t = this.target;
+    this.btns.forEach((b,i)=>{
+      b.classList.remove('x');
+      if(t){ b.disabled = false; b.innerHTML = `${t.q.options[i]}<small>${this.o.player===2 ? ['7','8','9','0'][i] : i+1} · PILIH</small>`; }
+      else { b.disabled = true; b.textContent = '…'; }
+    });
+  }
+  answer(i){
+    const t = this.target;
+    if(!t || t.dead || !this.alive) return;
+    const btn = this.btns[i];
+    if(btn.classList.contains('x')) return;
+    if(t.q.options[i] === t.q.answer){
+      sfx.shoot(); setTimeout(sfx.kill,80);
+      this.combo++;
+      const bonus = Math.min(this.combo-1,5)*2;
+      this.score += 10 + bonus;
+      this.pop(t, this.combo>=3 ? `HEADSHOT! x${this.combo}` : 'HEADSHOT!', '#4ade80');
+      this.hitEffect(t);
+      this.kill(t);
+      this.hud();
+      this.o.onScore && this.o.onScore(this);
+    } else {
+      sfx.wrong();
+      btn.classList.add('x');
+      this.combo = 0;
+      this.score = Math.max(0, this.score-5);
+      t.p = Math.min(.98, t.p + .05); // hukuman: zombie maju
+      t.el.classList.remove('hurt'); void t.el.offsetWidth; t.el.classList.add('hurt');
+      this.pop(t, '−1 NYAWA · −5 POIN', '#f87171');
+      this.loseLife();
+    }
+  }
+  loseLife(){
+    if(!this.alive) return;
+    this.lives = Math.max(0, this.lives - 1);
+    const flash = document.createElement('div'); flash.className = 'flash';
+    this.layer.appendChild(flash); setTimeout(()=>flash.remove(),450);
+    this.hud();
+    if(this.lives === 0){
+      this.alive = false;
+      this.btns.forEach(b=>b.disabled=true);
+      this.o.onEnd(this);
+    }
+  }
+  hitEffect(z){
+ const r=z.el.querySelector('.zb').getBoundingClientRect(), a=this.layer.getBoundingClientRect();
+ const x=r.left+r.width/2-a.left, y=r.top+r.height*.3-a.top;
+ const sx=a.width/2,sy=a.height-12,dx=x-sx,dy=y-sy;
+ const beam=document.createElement('i');beam.className='shot';beam.style.cssText='left:'+sx+'px;top:'+sy+'px;width:'+Math.hypot(dx,dy)+'px;transform:rotate('+Math.atan2(dy,dx)+'rad)';this.layer.appendChild(beam);setTimeout(()=>beam.remove(),200);
+ const ring=document.createElement('i');ring.className='impact';ring.style.left=x+'px';ring.style.top=y+'px';this.layer.appendChild(ring);setTimeout(()=>ring.remove(),450);
+ for(let i=0;i<10;i++){const p=document.createElement('i');p.className='spark';const ang=i*Math.PI/5;p.style.cssText='left:'+x+'px;top:'+y+'px;--dx:'+Math.cos(ang)*65+'px;--dy:'+Math.sin(ang)*65+'px';this.layer.appendChild(p);setTimeout(()=>p.remove(),650);}
+ }
+ kill(z){
+    z.dead = true; z.el.classList.add('dead'); z.el.classList.remove('t');
+    setTimeout(()=>z.el.remove(), 600);
+    this.zs = this.zs.filter(x=>x!==z || false).concat([]);
+    this.target = null; this.setButtons(); // perbarui target pada frame berikutnya
+  }
+  baseHit(z){
+    if(!this.alive || z.dead) return;
+    sfx.hit();
+    this.combo = 0;
+    const f = document.createElement('div'); f.className = 'flash'; this.layer.appendChild(f);
+    setTimeout(()=>f.remove(),450);
+    this.root.classList.remove('hurt'); void this.root.offsetWidth;
+    z.dead = true; z.el.remove();
+    this.zs = this.zs.filter(x=>x!==z);
+    this.target = null;
+    if(this.o.versus){ this.score = Math.max(0,this.score-10); }
+    else { this.loseLife(); return; }
+    this.hud();
+  }
+  pop(z,text,color){
+    const s = document.createElement('div'); s.className='pop'; s.textContent=text; s.style.color=color;
+    s.style.left = z.el.style.left; s.style.top = `calc(${z.el.style.top} - 110px)`;
+    s.style.zIndex = 99;
+    this.layer.appendChild(s); setTimeout(()=>s.remove(),800);
+  }
+  hud(){
+    this.root.querySelector('.scv').textContent = this.score;
+    this.root.querySelector('.cmb').textContent = this.combo>=2 ? `🔥 COMBO ${this.combo}` : '';
+    const h = this.root.querySelector('.hearts');
+    if(h) h.textContent = '❤️'.repeat(Math.max(0,this.lives)) + '🖤'.repeat(MAX_LIVES-Math.max(0,this.lives));
+    const bar = this.root.querySelector('.bar i');
+    const goal = this.o.versus ? WIN_SCORE : SOLO_WIN_SCORE;
+    if(bar) bar.style.width = Math.min(100, this.score/goal*100) + '%';
+    const mission = this.root.querySelector('.mission-count');
+    if(mission){
+      mission.textContent = this.score + ' / ' + goal;
+      bar.parentElement.setAttribute('aria-valuenow', Math.min(goal,this.score));
+    }
+  }
+}
 
-        const MainMenu = ({ onStart }) => (
-            <div className="flex flex-col items-center justify-center h-full relative overflow-hidden text-white p-4">
-                <div className="fog-overlay"></div>
-                <div className="absolute top-10 left-10 text-green-500 animate-spooky opacity-50 hidden md:block" style={{animationDelay: '0s'}}>
-                    <Icons.Skull className="w-16 h-16 md:w-24 md:h-24" />
-                </div>
-                <div className="absolute bottom-20 right-10 text-purple-500 animate-spooky opacity-50 hidden md:block" style={{animationDelay: '1.5s'}}>
-                    <Icons.Ghost className="w-16 h-16 md:w-24 md:h-24" />
-                </div>
-                
-                <div className="z-10 flex flex-col items-center w-full max-w-4xl">
-                    <h1 className="font-zombie text-5xl md:text-7xl lg:text-9xl text-green-500 mb-2 text-center tracking-wider drop-shadow-[0_5px_5px_rgba(0,0,0,0.8)] leading-tight">
-                        ZOMBIE MATH
-                    </h1>
-                    <h2 className="text-xl md:text-3xl font-bold text-red-500 mb-8 md:mb-12 uppercase tracking-[0.3em] md:tracking-[0.5em] drop-shadow-lg text-center">
-                        Survival Mode
-                    </h2>
+/* ---------- Pengendali ---------- */
+let mode = 1, level = 1, fields = [], raf = 0, last = 0, running = false;
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-8 w-full max-w-sm md:max-w-4xl mb-12">
-                        <button 
-                            onPointerDown={() => onStart(1)}
-                            className="game-btn group bg-gray-800/80 hover:bg-green-900/90 border-4 border-gray-600 hover:border-green-500 text-white p-4 md:p-8 rounded-xl shadow-2xl transform transition hover:scale-105 flex flex-col items-center backdrop-blur-sm"
-                        >
-                            <span className="text-4xl md:text-5xl mb-2 md:mb-4 group-hover:animate-bounce">🧟</span>
-                            <span className="text-2xl md:text-3xl font-zombie text-green-400">Solo Survival</span>
-                            <span className="text-xs md:text-sm mt-1 md:mt-2 text-gray-400 text-center">Pertahankan Benteng Sendirian</span>
-                        </button>
-                        <button 
-                            onPointerDown={() => onStart(2)}
-                            className="game-btn group bg-gray-800/80 hover:bg-purple-900/90 border-4 border-gray-600 hover:border-purple-500 text-white p-4 md:p-8 rounded-xl shadow-2xl transform transition hover:scale-105 flex flex-col items-center backdrop-blur-sm"
-                        >
-                            <span className="text-4xl md:text-5xl mb-2 md:mb-4 group-hover:animate-bounce">⚔️</span>
-                            <span className="text-2xl md:text-3xl font-zombie text-purple-400">Versus Battle</span>
-                            <span className="text-xs md:text-sm mt-1 md:mt-2 text-gray-400 text-center">Duel Pemburu Zombie</span>
-                        </button>
-                    </div>
+function show(id){
+  document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on', s.id===id));
+  $('#game').classList.toggle('on', id==='game');
+ document.querySelector('.brandmark').style.display = id==='menu' ? '' : 'none';
+}
+function loop(ts){
+  if(!running) return;
+  const dt = Math.min(.1,(ts-last)/1000); last = ts;
+  fields.forEach(f=>f.update(dt));
+  raf = requestAnimationFrame(loop);
+}
+function stopGame(){ running = false; cancelAnimationFrame(raf); fields.forEach(f=>f.alive=false); fields = []; $('#arena').innerHTML=''; }
 
-                    <div className="text-center text-gray-400 text-xs md:text-sm bg-black/40 p-4 rounded-xl border border-gray-700 backdrop-blur-sm">
-                        <p className="mb-1">Ide Permainan oleh <span className="text-white font-bold">Abdul Rahmat, S.Pd</span></p>
-                        <p className="text-gray-500">SDN 011 Balikpapan Tengah | Kontak: 081351767574</p>
-                    </div>
-                </div>
-            </div>
-        );
+function startGame(){
+  stopGame();
+  const arena = $('#arena');
+  arena.className = 'arena' + (mode===2?' vs':'');
+  arena.innerHTML = '';
+  if(mode === 1){
+    const d = document.createElement('div'); d.className='field'; arena.appendChild(d);
+    fields = [new Field(d, level, {versus:false, onEnd:f=>endSolo(f.score), onScore:f=>{ if(f.score>=SOLO_WIN_SCORE) endSolo(f.score,true); }})];
+  } else {
+    fields = [1,2].map(p=>{
+      const d = document.createElement('div'); d.className='field p'+p; arena.appendChild(d);
+      return new Field(d, level, {versus:true, player:p, onEnd:()=>endVersus(3-p, 'Nyawa pemain '+p+' habis.'), onScore:f=>{ if(f.score>=WIN_SCORE) endVersus(p); }});
+    });
+  }
+  show('game');
+  running = true; last = performance.now(); raf = requestAnimationFrame(loop);
+}
+function best(){ try{return +localStorage.getItem('zm_best_'+level)||0}catch(e){return 0} }
+function setBest(v){ try{localStorage.setItem('zm_best_'+level,v)}catch(e){} }
+function endSolo(score, won=false){
+  stopGame();
+  const b = best(); let txt = `Rekor level ini: ${Math.max(b,score)}`;
+  if(score > b){ setBest(score); txt = '🏆 REKOR BARU!'; }
+  $('#ovTitle').textContent=won ? 'MISI BERHASIL!' : 'GAME OVER'; $('#ovTitle').style.color=won ? '#c9fb6c' : '#dc2626';
+  $('#ovSub').textContent=won ? `Target ${SOLO_WIN_SCORE} poin tercapai! Benteng berhasil dipertahankan.` : `Nyawa habis. Capai ${SOLO_WIN_SCORE} poin untuk memenangkan misi.`; $('#ovScore').textContent=score; $('#ovBest').textContent=txt;
+  show('over');
+}
+function endVersus(p, reason='Berhasil meraih 100 poin!'){
+  stopGame();
+  $('#ovTitle').textContent=`SURVIVOR ${p} MENANG!`; $('#ovTitle').style.color='#22c55e';
+  $('#ovSub').textContent=reason; $('#ovScore').textContent='🏆'; $('#ovBest').textContent='';
+  show('over');
+}
 
-        const LevelSelect = ({ onSelectLevel, onBack }) => (
-            <div className="flex flex-col items-center justify-center h-full relative z-20 p-4">
-                 <div className="fog-overlay"></div>
-                
-                <h2 className="font-zombie text-4xl md:text-6xl text-red-500 mb-6 md:mb-10 z-10 drop-shadow-md text-center">Pilih Ancaman</h2>
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6 w-full max-w-6xl z-10 overflow-y-auto max-h-[70vh] p-2">
-                    {Object.entries(LEVELS).map(([lvl, data]) => (
-                        <button
-                            key={lvl}
-                            onPointerDown={() => onSelectLevel(parseInt(lvl))}
-                            className={`game-btn p-4 md:p-6 rounded-lg border-2 text-left transition hover:-translate-y-2 relative overflow-hidden group backdrop-blur-md
-                                ${lvl == 1 ? 'bg-green-900/60 border-green-600 hover:bg-green-900/80' : 
-                                  lvl == 2 ? 'bg-yellow-900/60 border-yellow-600 hover:bg-yellow-900/80' :
-                                  lvl == 3 ? 'bg-orange-900/60 border-orange-600 hover:bg-orange-900/80' :
-                                  'bg-red-900/60 border-red-600 hover:bg-red-900/80'}`}
-                        >
-                            <div className="absolute -right-4 -bottom-4 opacity-20 group-hover:opacity-40 transition-opacity">
-                                {lvl == 4 ? <Icons.Skull className="w-20 h-20 md:w-24 md:h-24" /> : <Icons.Users className="w-20 h-20 md:w-24 md:h-24" />}
-                            </div>
-                            <div className="text-3xl md:text-4xl font-zombie mb-1 md:mb-2">{lvl}</div>
-                            <div className="text-lg md:text-xl font-bold uppercase tracking-wide">{data.name}</div>
-                            <div className="text-xs md:text-sm mt-1 md:mt-2 text-gray-300">Zona: {data.min} - {data.max}</div>
-                        </button>
-                    ))}
-                </div>
-                <button onPointerDown={onBack} className="game-btn mt-6 md:mt-12 px-6 md:px-8 py-2 md:py-3 bg-gray-700/80 rounded-full text-white font-bold hover:bg-gray-600 border border-gray-500 z-10 backdrop-blur-sm text-sm md:text-base">
-                    KEMBALI KE MARKAS
-                </button>
-            </div>
-        );
+/* ---------- Menu & tombol ---------- */
+$('#lvList').innerHTML = Object.entries(LEVELS).map(([k,v])=>
+  `<button class="lv" data-l="${k}" style="background:${v.c}55;border-color:${v.c}"><div class="n zf">${k}</div><div class="nm">${v.name}</div><small>${v.description || `Tambah & kurang · ${v.min}–${v.max}`}</small></button>`).join('');
+document.querySelectorAll('[data-mode]').forEach(b=>b.addEventListener('pointerdown',()=>{mode=+b.dataset.mode; show('levels');}));
+document.querySelectorAll('[data-l]').forEach(b=>b.addEventListener('pointerdown',()=>{level=+b.dataset.l; startGame();}));
+$('#lvBack').addEventListener('pointerdown',()=>show('menu'));
+$('#bBack').addEventListener('pointerdown',()=>{stopGame(); show('menu');});
+$('#ovAgain').addEventListener('pointerdown',startGame);
+$('#ovMenu').addEventListener('pointerdown',()=>show('menu'));
+$('#ovLevel').addEventListener('pointerdown',()=>show('levels'));
 
-        // --- SOLO MODE (RESPONSIF) ---
-        const SoloGame = ({ level, onEndGame }) => {
-            const [score, setScore] = useState(0);
-            const [question, setQuestion] = useState(null);
-            const [timer, setTimer] = useState(60);
-            const [feedback, setFeedback] = useState(null);
+const bgm = $('#bgm'); bgm.volume = .5;
+let userMuted = false;
+function playMusic(){ bgm.play().then(()=>$('#bMu').textContent='🔊').catch(()=>{}); }
+$('#bMu').addEventListener('pointerdown',e=>{
+  e.stopPropagation();
+  if(bgm.paused){ userMuted = false; playMusic(); }
+  else { userMuted = true; bgm.pause(); $('#bMu').textContent='🔇'; }
+});
+// Browser melarang suara otomatis, jadi musik mulai pada sentuhan pertama
+document.addEventListener('pointerdown',()=>{ if(bgm.paused && !userMuted) playMusic(); },{once:false});
+$('#bFs').addEventListener('pointerdown',()=>{
+  if(!document.fullscreenElement) document.documentElement.requestFullscreen().catch(()=>{});
+  else document.exitFullscreen();
+});
 
-            useEffect(() => {
-                setQuestion(generateQuestion(level));
-            }, []);
-
-            useEffect(() => {
-                const interval = setInterval(() => {
-                    setTimer(t => {
-                        if (t <= 1) {
-                            clearInterval(interval);
-                            onEndGame(score);
-                            return 0;
-                        }
-                        return t - 1;
-                    });
-                }, 1000);
-                return () => clearInterval(interval);
-            }, [score]);
-
-            const handleAnswer = (val) => {
-                if (val === question.answer) {
-                    setScore(s => s + 10);
-                    setFeedback('correct');
-                    setTimeout(() => {
-                        setFeedback(null);
-                        setQuestion(generateQuestion(level));
-                    }, 300);
-                } else {
-                    setScore(s => Math.max(0, s - 5));
-                    setFeedback('wrong');
-                    setTimeout(() => setFeedback(null), 300);
-                }
-            };
-
-            return (
-                <div className={`h-full w-full flex flex-col relative z-10 transition-colors duration-200 ${feedback === 'wrong' ? 'border-4 md:border-8 border-red-600 animate-shake' : ''}`}>
-                    
-                    <div className="flex justify-between items-center p-3 md:p-6 bg-black/50 backdrop-blur-md border-b-2 md:border-b-4 border-gray-700">
-                        <div className="text-green-400 font-zombie text-2xl md:text-4xl">SKOR: {score}</div>
-                        <div className={`flex items-center gap-2 px-3 py-1 md:px-6 md:py-2 rounded-xl border-2 ${timer < 10 ? 'bg-red-900/80 border-red-500 animate-pulse' : 'bg-gray-800/80 border-gray-500'}`}>
-                            <Icons.Clock className="w-5 h-5 md:w-8 md:h-8" />
-                            <span className="text-2xl md:text-4xl font-mono">{timer}s</span>
-                        </div>
-                    </div>
-
-                    <div className="flex-1 flex flex-col items-center justify-center p-4 md:p-8 gap-4 md:gap-8 overflow-y-auto">
-                        <div className="relative group w-full max-w-xs md:max-w-2xl">
-                            <div className="absolute inset-0 bg-green-500 blur-xl opacity-20 group-hover:opacity-40 transition-opacity"></div>
-                            <div className="relative bg-black/90 border-4 border-green-600 p-6 md:p-12 rounded-2xl md:rounded-3xl shadow-2xl text-center">
-                                <div className="text-gray-400 text-sm md:text-xl font-bold tracking-[0.2em] md:tracking-[0.3em] mb-2 md:mb-4">TARGET TERKUNCI</div>
-                                <div className="text-5xl md:text-9xl font-mono text-white font-bold drop-shadow-[0_0_10px_rgba(34,197,94,0.5)]">
-                                    {question ? `${question.num1} ${question.operator} ${question.num2}` : '...'}
-                                </div>
-                            </div>
-                        </div>
-
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 md:gap-6 w-full max-w-xs md:max-w-4xl mt-4 md:mt-8">
-                            {question && question.options.map((opt, i) => (
-                                <button
-                                    key={i}
-                                    onPointerDown={(e) => {
-                                        e.preventDefault(); // Mencegah event ganda
-                                        handleAnswer(opt);
-                                    }}
-                                    className="game-btn bg-gray-800 hover:bg-gray-700 border-b-4 md:border-b-8 border-gray-900 hover:border-gray-800 text-white text-3xl md:text-5xl font-bold py-4 md:py-8 rounded-xl md:rounded-2xl shadow-xl transition-all flex items-center justify-center gap-2 md:gap-4 group"
-                                >
-                                    <Icons.Crosshair className="text-gray-500 group-hover:text-red-500 transition-colors w-6 h-6 md:w-10 md:h-10" />
-                                    {opt}
-                                </button>
-                            ))}
-                        </div>
-                    </div>
-
-                    {feedback === 'correct' && (
-                        <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-50 bg-green-500/20 backdrop-blur-sm">
-                            <div className="font-zombie text-6xl md:text-9xl text-green-400 animate-splat drop-shadow-[0_0_20px_black]">
-                                HEADSHOT!
-                            </div>
-                        </div>
-                    )}
-                </div>
-            );
-        };
-
-        // --- VERSUS MODE (RESPONSIF & INSTANT TOUCH) ---
-        const PlayerPanel = ({ player, score, question, borderColor, btnClass, onAnswer }) => (
-            <div className={`flex-1 flex flex-col relative border-r-2 border-gray-700 bg-gray-900/90 min-w-0`}> 
-                <div className={`p-2 md:p-4 text-center border-b-4 ${borderColor} bg-black/40`}>
-                    <div className="text-sm md:text-xl font-bold text-gray-400 uppercase tracking-widest truncate">P{player}</div>
-                    <div className="text-4xl md:text-6xl font-zombie mt-1 md:mt-2 text-white">{score} <span className="text-xs md:text-sm font-sans text-gray-500">/ 100</span></div>
-                    <div className="w-full h-2 md:h-3 bg-gray-800 rounded-full mt-2 overflow-hidden">
-                        <div 
-                            className="h-full bg-gradient-to-r from-green-600 to-green-400 transition-all duration-300" 
-                            style={{width: `${Math.min(100, score)}%`}}
-                        ></div>
-                    </div>
-                </div>
-
-                <div className="flex-1 flex flex-col items-center justify-center relative overflow-hidden p-2">
-                    <div className="absolute inset-0 flex items-center justify-center opacity-10 pointer-events-none">
-                        <div className={player === 1 ? "text-cyan-500" : "text-purple-500"}>
-                            <Icons.Biohazard className="w-32 h-32 md:w-56 md:h-56" />
-                        </div>
-                    </div>
-                    <div className="bg-black text-white px-4 py-2 md:px-8 md:py-6 rounded border-2 border-gray-600 text-3xl md:text-6xl font-mono shadow-[0_0_15px_rgba(255,255,255,0.1)] z-10 whitespace-nowrap">
-                        {question ? `${question.num1} ${question.operator} ${question.num2}` : '...'}
-                    </div>
-                </div>
-
-                <div className="p-2 md:p-6 grid grid-cols-1 sm:grid-cols-2 gap-2 md:gap-4 pb-4 md:pb-12 bg-black/20">
-                     {question && question.options.map((opt, i) => (
-                         <button
-                            key={i}
-                            onPointerDown={(e) => {
-                                e.preventDefault(); // INSTANT RESPONSE
-                                onAnswer(player, opt, question);
-                            }}
-                            className={`game-btn ${btnClass} text-white text-xl md:text-4xl font-bold py-3 md:py-6 rounded border-b-2 md:border-b-4 transition-all shadow-lg flex items-center justify-center gap-1 md:gap-2 select-none`}
-                         >
-                             <Icons.Crosshair className="w-4 h-4 md:w-6 md:h-6" />
-                             {opt}
-                         </button>
-                     ))}
-                </div>
-            </div>
-        );
-
-        const VersusGame = ({ level, onEndGame }) => {
-            const [q1, setQ1] = useState(null);
-            const [q2, setQ2] = useState(null);
-            const [score1, setScore1] = useState(0);
-            const [score2, setScore2] = useState(0);
-            const [winner, setWinner] = useState(null);
-
-            useEffect(() => {
-                setQ1(generateQuestion(level));
-                setQ2(generateQuestion(level));
-            }, []);
-
-            useEffect(() => {
-                if (score1 >= 100) setWinner(1);
-                if (score2 >= 100) setWinner(2);
-            }, [score1, score2]);
-
-            const handleAnswer = (player, val, currentQ) => {
-                if (winner) return;
-
-                if (val === currentQ.answer) {
-                    if (player === 1) {
-                        setScore1(s => s + 10);
-                        setQ1(generateQuestion(level));
-                    } else {
-                        setScore2(s => s + 10);
-                        setQ2(generateQuestion(level));
-                    }
-                } else {
-                    if (player === 1) setScore1(s => Math.max(0, s - 5));
-                    else setScore2(s => Math.max(0, s - 5));
-                }
-            };
-
-            if (winner) {
-                return (
-                    <div className="h-full flex flex-col items-center justify-center bg-gray-900 text-white relative z-20 p-4 text-center">
-                        <div className="bg-black/80 p-6 md:p-12 rounded-2xl backdrop-blur-md border-4 border-green-600 w-full max-w-2xl">
-                            <h1 className="font-zombie text-5xl md:text-8xl text-green-500 mb-4 animate-bounce">SURVIVOR {winner} WINS!</h1>
-                            <p className="text-lg md:text-2xl text-gray-400 mb-8">Semua zombie berhasil dimusnahkan.</p>
-                            <button onPointerDown={() => onEndGame(0)} className="game-btn bg-red-600 hover:bg-red-700 text-white px-6 md:px-10 py-3 md:py-4 rounded-lg text-xl md:text-3xl font-bold shadow-lg uppercase tracking-widest w-full md:w-auto">
-                                Kembali ke Menu
-                            </button>
-                        </div>
-                    </div>
-                )
-            }
-
-            // Flex-col on mobile (Top/Bottom), Flex-row on desktop (Left/Right)
-            return (
-                <div className="h-full w-full flex flex-col md:flex-row relative z-10">
-                    <PlayerPanel 
-                        player={1} 
-                        score={score1} 
-                        question={q1} 
-                        borderColor="border-cyan-600"
-                        btnClass="bg-cyan-800 border-cyan-900 hover:bg-cyan-700"
-                        onAnswer={handleAnswer}
-                    />
-                    <PlayerPanel 
-                        player={2} 
-                        score={score2} 
-                        question={q2} 
-                        borderColor="border-purple-600"
-                        btnClass="bg-purple-800 border-purple-900 hover:bg-purple-700"
-                        onAnswer={handleAnswer}
-                    />
-                </div>
-            );
-        };
-
-        const App = () => {
-            const [gameState, setGameState] = useState('menu');
-            const [mode, setMode] = useState(1);
-            const [level, setLevel] = useState(1);
-            const [lastScore, setLastScore] = useState(0);
-            
-            const [isMusicPlaying, setIsMusicPlaying] = useState(false);
-            const [isFullscreen, setIsFullscreen] = useState(false);
-            const audioRef = useRef(null);
-
-            useEffect(() => {
-                if(audioRef.current) {
-                    audioRef.current.volume = 0.5;
-                }
-            }, []);
-
-            const toggleMusic = () => {
-                if (audioRef.current) {
-                    if (isMusicPlaying) {
-                        audioRef.current.pause();
-                        setIsMusicPlaying(false);
-                    } else {
-                        audioRef.current.play()
-                            .then(() => setIsMusicPlaying(true))
-                            .catch(e => console.log("Playback failed:", e));
-                    }
-                }
-            };
-
-            const toggleFullscreen = () => {
-                if (!document.fullscreenElement) {
-                    document.documentElement.requestFullscreen().then(() => setIsFullscreen(true)).catch(err => console.log(err));
-                } else {
-                    document.exitFullscreen().then(() => setIsFullscreen(false));
-                }
-            };
-
-            const handleStart = (selectedMode) => {
-                setMode(selectedMode);
-                setGameState('level_select');
-            };
-
-            const handleLevelSelect = (selectedLevel) => {
-                setLevel(selectedLevel);
-                setGameState('playing');
-            };
-
-            const handleEndGame = (score) => {
-                setLastScore(score);
-                setGameState('gameover');
-            };
-
-            const handleHome = () => setGameState('menu');
-
-            return (
-                <div className="h-full w-full relative">
-                    <audio ref={audioRef} src={BGM_URL} loop />
-
-                    <div className="absolute top-2 right-2 md:top-4 md:right-4 z-[60] flex gap-2">
-                        <button 
-                            onPointerDown={toggleFullscreen} 
-                            className="bg-black/50 hover:bg-blue-600/80 text-white p-2 md:p-3 rounded-full transition-colors border-2 border-white/20 backdrop-blur-sm"
-                        >
-                            {isFullscreen ? <Icons.Minimize className="w-5 h-5 md:w-6 md:h-6" /> : <Icons.Maximize className="w-5 h-5 md:w-6 md:h-6" />}
-                        </button>
-
-                        <button 
-                            onPointerDown={toggleMusic} 
-                            className="bg-black/50 hover:bg-green-600/80 text-white p-2 md:p-3 rounded-full transition-colors border-2 border-white/20 backdrop-blur-sm"
-                        >
-                            {isMusicPlaying ? <Icons.Volume2 className="w-5 h-5 md:w-6 md:h-6" /> : <Icons.VolumeX className="w-5 h-5 md:w-6 md:h-6" />}
-                        </button>
-                    </div>
-
-                    {gameState === 'menu' && <MainMenu onStart={handleStart} />}
-                    
-                    {gameState === 'level_select' && (
-                        <LevelSelect 
-                            onSelectLevel={handleLevelSelect} 
-                            onBack={() => setGameState('menu')} 
-                        />
-                    )}
-
-                    {gameState === 'playing' && mode === 1 && (
-                        <SoloGame level={level} onEndGame={handleEndGame} />
-                    )}
-
-                    {gameState === 'playing' && mode === 2 && (
-                        <VersusGame level={level} onEndGame={handleHome} />
-                    )}
-
-                    {gameState === 'gameover' && (
-                        <div className="h-full flex flex-col items-center justify-center bg-black text-white relative overflow-hidden z-20 p-4">
-                            <div className="absolute inset-0 bg-red-900/40 animate-pulse pointer-events-none"></div>
-                            
-                            <h2 className="font-zombie text-5xl md:text-7xl text-red-600 mb-2 md:mb-4 drop-shadow-[0_2px_10px_rgba(220,38,38,0.8)] z-10">GAME OVER</h2>
-                            
-                            <div className="bg-gray-800/90 backdrop-blur-md p-6 md:p-8 rounded-lg border-2 border-gray-600 text-center shadow-2xl z-10 w-full max-w-lg">
-                                <p className="text-lg md:text-xl text-gray-400 mb-2">Total Kill Score</p>
-                                <p className="text-6xl md:text-8xl font-bold text-green-500 mb-6 md:mb-8 font-mono">{lastScore}</p>
-                                
-                                <div className="flex flex-col md:flex-row gap-4 md:gap-6 justify-center">
-                                    <button onPointerDown={() => setGameState('playing')} className="game-btn bg-green-700 hover:bg-green-600 text-white px-6 md:px-8 py-3 md:py-4 rounded font-bold shadow-lg flex items-center justify-center gap-2 text-lg">
-                                        <Icons.RefreshCw className="w-5 h-5 md:w-6 md:h-6" /> MAIN LAGI
-                                    </button>
-                                    <button onPointerDown={handleHome} className="game-btn bg-gray-600 hover:bg-gray-500 text-white px-6 md:px-8 py-3 md:py-4 rounded font-bold shadow-lg text-lg">
-                                        MENU
-                                    </button>
-                                </div>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            );
-        };
-
-        const root = ReactDOM.createRoot(document.getElementById('root'));
-        root.render(<App />);
-    </script>
+/* Keyboard: P1/Solo = 1-4, P2 = 7,8,9,0 */
+addEventListener('keydown',e=>{
+  if(!running) return;
+  const k1 = ['1','2','3','4'].indexOf(e.key), k2 = ['7','8','9','0'].indexOf(e.key);
+  if(k1>=0 && fields[0]) fields[0].answer(k1);
+  if(k2>=0 && fields[1]) fields[1].answer(k2);
+});
+</script>
 </body>
 </html>
